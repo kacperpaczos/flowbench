@@ -1,0 +1,105 @@
+{
+  "_kontekst": {
+    "workflowId": "rnfu7SOGxjqaUbYH",
+    "nazwaN8n": "Średnia temperatura z trzech miast",
+    "klasyfikacja": "ARTEFAKT-HISTORYCZNY",
+    "powodZachowania": "slad, ze czat radzil sobie poza domena handlowa; nazwa = przypadek testowy ograniczenia identyfikatorow Dagu (rejestr §4.0a)",
+    "sekcjaRejestru": "§2",
+    "odtwarzanyWDagu": false,
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "definicja": {
+    "id": "rnfu7SOGxjqaUbYH",
+    "name": "Średnia temperatura z trzech miast",
+    "active": false,
+    "nodes": [
+      {
+        "id": "2faa207d-8ec3-457c-a079-2a77db0f467d",
+        "name": "Start",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {}
+      },
+      {
+        "id": "fd293215-746f-4da1-b1a2-a68206297e74",
+        "name": "Dane przykladowe",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "mode": "raw",
+          "jsonOutput": "{\n  \"pomiary\": [\n    { \"miasto\": \"Warszawa\", \"temperaturaC\": 21.4 },\n    { \"miasto\": \"Krakow\", \"temperaturaC\": 23.1 },\n    { \"miasto\": \"Gdansk\", \"temperaturaC\": 18.6 }\n  ]\n}",
+          "includeOtherFields": false,
+          "options": {}
+        }
+      },
+      {
+        "id": "7a91a28f-c7c0-4cdb-818c-91777c4895ec",
+        "name": "Srednia temperatura",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const pomiary = $input.first().json.pomiary || [];\nif (pomiary.length === 0) {\n  return [{ json: { liczbaMiast: 0, sredniaTemperaturaC: null, uwaga: \"Brak danych wejsciowych\" } }];\n}\nconst suma = pomiary.reduce(function (acc, p) { return acc + Number(p.temperaturaC); }, 0);\nconst srednia = suma / pomiary.length;\nreturn [{\n  json: {\n    miasta: pomiary.map(function (p) { return p.miasto; }),\n    pomiary: pomiary,\n    liczbaMiast: pomiary.length,\n    sredniaTemperaturaC: Math.round(srednia * 100) / 100\n  }\n}];"
+        }
+      }
+    ],
+    "connections": {
+      "Start": {
+        "main": [
+          [
+            {
+              "node": "Dane przykladowe",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dane przykladowe": {
+        "main": [
+          [
+            {
+              "node": "Srednia temperatura",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
+    },
+    "staticData": null,
+    "pinData": null,
+    "versionId": "6d0200e2-9293-4da1-8f82-7b3c4d003703",
+    "triggerCount": 0,
+    "meta": {
+      "aiBuilderAssisted": true,
+      "builderVariant": "mcp"
+    },
+    "parentFolderId": null,
+    "createdAt": "2026-09-14 21:17:55.852",
+    "updatedAt": "2026-09-14 21:17:55.852",
+    "isArchived": false,
+    "versionCounter": 1,
+    "description": "Ręczny trigger, przykładowe pomiary dla trzech miast i obliczenie średniej temperatury.",
+    "activeVersionId": null,
+    "nodeGroups": [],
+    "sourceWorkflowId": null
+  }
+}

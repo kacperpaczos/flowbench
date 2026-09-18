@@ -629,3 +629,363 @@ Dla uczciwości, w konwencji załącznika do `baseline-prototypu.md`:
 > klucza szyfrowania. Wartość **nie jest reprodukowana w tym dokumencie**, plik nie został
 > zmieniony, a klucz i tak nie chroni niczego (§3.2). Odnotowuję, bo rozliczenie, które ukrywa
 > własne potknięcia, jest warte mniej niż to, które ich nie ukrywa.
+
+---
+
+## 7. Ekstrakcja fixture (2026-09-18)
+
+Sekcje 0–6 rozliczyły, **co** jest w wolumenie. Ta sekcja rozlicza, **co z tego wyjęto**
+do repozytorium i z jakim wynikiem weryfikacji. Wynik ekstrakcji leży w `fixtures/`;
+`fixtures/README.md` opisuje sam katalog, ta sekcja opisuje robotę.
+
+Zakres świadomie ograniczony: **żadnego DAG-a, żadnego YAML-a Dagu.** Kontrakt danych
+z §4.0(d) (kruchość `RESULT=<JSON w jednej linii>`, cytowanie, `@base64` vs „jedna linia")
+jest nierozstrzygnięty; pliki napisane przed tą decyzją byłyby pracą do wyrzucenia.
+
+### 7.1 Metoda: dlaczego online-backup, a nie `docker cp`
+
+§0 użył `docker cp` na trzech plikach (`database.sqlite`, `-wal`, `-shm`) i to wystarczyło
+do **policzenia** wierszy. Do **wyjęcia treści** nie wystarczy — i teraz wiadomo dlaczego,
+bo to sprawdzone, a nie założone. Kopia samego `database.sqlite`, bez dziennika:
+
+```
+$ docker run --rm -v n8niframe_n8n_data:/vol:ro -v "$TMP":/out alpine:latest \
+      sh -c 'cp /vol/database.sqlite /out/tylko-main.sqlite'
+$ sqlite3 "file:$TMP/tylko-main.sqlite?mode=ro" "
+    SELECT 'workflow_entity', count(*) FROM workflow_entity
+    UNION ALL SELECT 'execution_entity', count(*) FROM execution_entity
+    UNION ALL SELECT 'execution_data', count(*) FROM execution_data;"
+workflow_entity|12
+execution_entity|5
+execution_data|5
+
+$ sqlite3 "file:$TMP/tylko-main.sqlite?mode=ro" "PRAGMA integrity_check;"
+ok
+```
+
+**12 / 5 / 5 zamiast 15 / 12 / 12** — i `integrity_check` mimo to mówi `ok`. Spójność
+strukturalna nie wyłapuje brakującego dziennika; wyłapują to dopiero liczby wierszy.
+Czego konkretnie brakuje w takiej kopii: workflow `aEUUAnNsUr7LJIyr` („Premie 8% od pensji"),
+`FNgC8R2d33pddvSa` i `gnzjOf2qHJoEPeGo`, oraz wykonania #6–#12 — **czyli wszystkie pięć
+wykonań procesu Premie, a z nimi wszystkie cztery wersje jego definicji z §1.1.** Materiał,
+który §3.8 nazywa jedynym nieodwracalnym w sensie informacyjnym, jest dokładnie tym,
+co naiwna kopia gubi w całości. Datowanie tłumaczy resztę: `database.sqlite` ma znacznik
+2026-09-14 21:25, a `-wal` — 2026-09-18 17:20; cała praca z 15 i 18 września siedzi
+w dzienniku.
+
+Dlatego migawkę robi **natywny online-backup SQLite** (`.backup`), w kontenerze
+pomocniczym montującym wolumen **read-only**:
+
+```
+$ docker run --rm --name n8n-fixture-backup \
+    -v n8niframe_n8n_data:/vol:ro -v "$KATALOG_MIGAWKI":/out \
+    alpine:latest sh -c '
+      apk add --no-cache sqlite >/dev/null &&
+      sqlite3 "file:/vol/database.sqlite?mode=ro" ".backup /out/database.snapshot.sqlite"'
+```
+
+Baza była w tym czasie otwarta przez działający kontener `n8niframe-n8n`
+(`PRAGMA journal_mode` → `wal`). `.backup` czyta ją przez normalne API SQLite, więc scala
+WAL z plikiem głównym sam. Wersje narzędzi: Docker 29.8.0 (rootless — bez `--user`),
+`alpine@sha256:5b02b42e…`, SQLite 3.53.4.
+
+### 7.2 Dowód spójności migawki
+
+```
+$ sqlite3 "file:$SNAP?mode=ro" "PRAGMA integrity_check; PRAGMA quick_check;"
+ok
+ok
+
+$ sqlite3 "file:$SNAP?mode=ro" "
+    SELECT 'workflow_entity ', count(*) FROM workflow_entity
+    UNION ALL SELECT 'execution_entity', count(*) FROM execution_entity
+    UNION ALL SELECT 'execution_data  ', count(*) FROM execution_data
+    UNION ALL SELECT 'workflow_history', count(*) FROM workflow_history
+    UNION ALL SELECT 'credentials_entity', count(*) FROM credentials_entity;"
+workflow_entity |15
+execution_entity|12
+execution_data  |12
+workflow_history|15
+credentials_entity|0
+
+$ sha256sum "$SNAP"
+435c6392fb61b740112d0c4ff93293afb9e7edab84d7cf11f32899bf791039a2  database.snapshot.sqlite
+$ stat -c %s "$SNAP"
+2207744
+```
+
+**15 / 12 / 12 — zgodne z §0 i §3.8.** `workflow_history` = 15 i `credentials_entity` = 0
+potwierdzają §3.9 i §3.4 na tej samej migawce.
+
+**Migawka nie wchodzi do repozytorium.** Leży poza `fixtures/`, w katalogu tymczasowym sesji:
+
+```
+/tmp/claude-1000/-home-paczos-Documents-BetterProton-n8nIframe/\
+1a50f909-fd31-41ec-b6d5-e2bd0bb21621/scratchpad/snapshot/database.snapshot.sqlite
+sha256 435c6392fb61b740112d0c4ff93293afb9e7edab84d7cf11f32899bf791039a2, 2 207 744 B
+```
+
+Powód: zawiera hash hasła właściciela (§3.1), `deployment_key` (§3.3) i wiersz
+`user_api_keys` (§3.3). To jest katalog sesji — **migawka zniknie razem z sesją.** Kto chce
+ją zachować, musi ją skopiować świadomie i poza gita; kto chce ją odtworzyć, ma komendę
+w §7.1 i w `fixtures/README.md` §5.
+
+### 7.3 Co wyciągnięto
+
+23 pliki w `fixtures/`, wszystkie w `MANIFEST.json`:
+
+| co | ile plików | źródło |
+|---|---|---|
+| definicje czterech procesów DO-ODTWORZENIA | 4 | `workflow_entity` (20 kolumn) |
+| wejścia czterech procesów | 4 | `execution_data.data`, węzeł wejściowy |
+| oczekiwane wyjścia czterech procesów | 4 | `execution_data.data`, ostatni węzeł |
+| cztery wersje definicji `Premie 8% od pensji` | 4 | `execution_data.workflowData` |
+| definicje dwóch ARTEFAKTÓW-HISTORYCZNYCH | 2 | `workflow_entity` |
+| `README.md` + 4 narzędzia (`ekstrakcja.py`, `weryfikuj.py`, `flatted.py`, `sprawdz-sumy.sh`) | 5 | — |
+
+Wykonania wzorcowe: #12 (`status-ok`), #3 (`demo-mcp-wartosc-zamowienia`),
+#4 (`lista-produktow-suma-zamowienia`), #11 (`premie-od-pensji`) — w każdym przypadku
+najnowsze wykonanie danego procesu, którego `workflowVersionId` jest równy `versionId`
+definicji bieżącej. Sprawdzone, zapisane w każdym pliku pod
+`_kontekst.wykonanieZgodneZBiezacaDefinicja`.
+
+**Jedno ustalenie techniczne warte zapisania.** `execution_data.data` nie jest zwykłym
+JSON-em — to format biblioteki `flatted`: płaska tablica, w której **każdy string wewnątrz
+kontenera jest indeksem** do tej tablicy, a prawdziwe stringi leżą w niej jako osobne wpisy.
+`jq` tego nie rozwinie. Dekoder ma 30 linii i leży w `fixtures/_narzedzia/flatted.py`;
+bez niego migawki wykonań są nieczytelne, a to one są jedynym nośnikiem §1.1.
+
+**Drugie: `workflowData` nie zawiera `versionId`.** Ma tylko `id`, `name`, `nodes`,
+`connections`, `settings`, `nodeGroups`. Przypisanie wersji do migawki idzie przez
+`execution_entity.workflowVersionId`; zgodność z `execution_data.workflowVersionId`
+sprawdzona dla wszystkich pięciu wykonań Premii — pięć na pięć.
+
+### 7.4 Cztery wersje Premii — potwierdzenie §1.1
+
+§1.1 rekonstruował ten podział z migawek; teraz każda wersja ma swój plik z pełną definicją
+i listą wykonań, a przypisanie jest sprawdzone wobec bazy:
+
+```
+[OK] 01-3b7f786f-…: wykonania [6, 7] = [6, 7] z bazy
+[OK] 01-3b7f786f-…: definicja = execution_data.workflowData (#6), 4 wezlow
+[OK] 02-677655e1-…: wykonania [9] = [9] z bazy
+[OK] 02-677655e1-…: definicja = execution_data.workflowData (#9), 4 wezlow
+[OK] 03-74e1d18e-…: wykonania [10] = [10] z bazy
+[OK] 03-74e1d18e-…: definicja = execution_data.workflowData (#10), 5 wezlow
+[OK] 04-2a2d5435-…: wykonania [11] = [11] z bazy
+[OK] 04-2a2d5435-…: definicja = execution_data.workflowData (#11), 7 wezlow
+[OK] roznych versionId w execution_entity = 4
+```
+
+Wersję `01` uruchomiono dwa razy (#6 i #7); skrypt sprawdza, że obie migawki są identyczne,
+i przerywa, gdyby nie były. **Tabela §1.1 potwierdza się co do wiersza.** Trzy wersje
+pośrednie nadal nie istnieją w `workflow_history` — teraz istnieją w `fixtures/`.
+
+### 7.5 Weryfikacja wyjść: te same pola, typy i precyzja
+
+`fixtures/_narzedzia/weryfikuj.py` porównuje każdy `wejscie.json` i `oczekiwane-wyjscie.json`
+z migawką po **kanonicznym JSON-ie**, więc łapie też różnicę `1` vs `1.0` i zmianę kolejności.
+Wynik dla wszystkich czterech procesów — 16 sprawdzeń, wszystkie zielone. Pełne porównanie
+pole-po-polu dla `premie-od-pensji` (wykonanie #11):
+
+```
+  pole                                      migawka typ             fixture typ      zgodne
+  -----------------------------------------------------------------------------------------
+  [0].liczbaPracownikow                           3 int                   3 int      tak
+  [0].sumaPensji                              34500 int               34500 int      tak
+  [0].sumaPremii                               2760 int                2760 int      tak
+  [0].sumaDodatkow                              150 int                 150 int      tak
+  [0].sumaPremiiRazem                          2910 int                2910 int      tak
+  [0].sumaPodatku                             10406 int               10406 int      tak
+  [0].sumaNaDoReke                            27004 int               27004 int      tak
+  [0].szczegoly[0].imie              'Anna Kowalska' str      'Anna Kowalska' str      tak
+  [0].szczegoly[0].pensja                      7200 int                7200 int      tak
+  [0].szczegoly[0].premia                       576 int                 576 int      tak
+  [0].szczegoly[0].dodatek                       50 int                  50 int      tak
+  [0].szczegoly[0].premiaRazem                  626 int                 626 int      tak
+  [0].szczegoly[0].stawkaPodatku               0.12 float              0.12 float    tak
+  [0].szczegoly[0].podatek                   939.12 float            939.12 float    tak
+  [0].szczegoly[0].naDoReke                 6886.88 float           6886.88 float    tak
+  [0].szczegoly[1].imie               'Piotr Nowak' str       'Piotr Nowak' str      tak
+  [0].szczegoly[1].pensja                     11500 int               11500 int      tak
+  [0].szczegoly[1].premia                       920 int                 920 int      tak
+  [0].szczegoly[1].dodatek                       50 int                  50 int      tak
+  [0].szczegoly[1].premiaRazem                  970 int                 970 int      tak
+  [0].szczegoly[1].stawkaPodatku               0.32 float              0.32 float    tak
+  [0].szczegoly[1].podatek                   3990.4 float            3990.4 float    tak
+  [0].szczegoly[1].naDoReke                  8479.6 float            8479.6 float    tak
+  [0].szczegoly[2].imie              'Maria Wisniewska' str      'Maria Wisniewska' str      tak
+  [0].szczegoly[2].pensja                     15800 int               15800 int      tak
+  [0].szczegoly[2].premia                      1264 int                1264 int      tak
+  [0].szczegoly[2].dodatek                       50 int                  50 int      tak
+  [0].szczegoly[2].premiaRazem                 1314 int                1314 int      tak
+  [0].szczegoly[2].stawkaPodatku               0.32 float              0.32 float    tak
+  [0].szczegoly[2].podatek                  5476.48 float           5476.48 float    tak
+  [0].szczegoly[2].naDoReke                11637.52 float          11637.52 float    tak
+  [OK ] 31/31 lisci zgodnych co do sciezki, wartosci i typu
+```
+
+**Trzy rzeczy, które ta tabela mówi, a §4 tylko zapowiadał:**
+
+1. **`sumaPodatku` i `sumaNaDoReke` są `int`, nie `float`.** `939.12 + 3990.4 + 5476.48`
+   wypadło równo `10406`, więc JS zapisał liczbę całkowitą. Implementacja w Dagu, która
+   zwróci `10406.0`, będzie liczbowo poprawna i **nie przejdzie** porównania z tym fixture.
+   To jest §4.0(c) („typy giną na granicy kroku") pokazane na konkretnej wartości.
+2. **Precyzja nie jest jednolita w obrębie jednego pola.** `szczegoly[].podatek` ma
+   `[1, 2]` cyfr po przecinku — `3990.4` obok `939.12`. To skutek `Math.round(x*100)/100`,
+   a nie formatowania. Fixture zapisuje to jawnie w polu `precyzjaLiczb`.
+3. **Zaokrąglanie `jq` vs JS pozostaje do sprawdzenia** (§4.2 pkt 3). Fixture daje teraz
+   liczbę odniesienia co do grosza dla każdego z 31 liści — jest z czym porównywać.
+
+Dla `lista-produktow-suma-zamowienia` jedno ostrzeżenie o precyzji, które trzeba znać:
+w definicji węzła `Lista produktow` (tryb `raw`) tekst JSON ma `"unitPrice": 129.50`
+i `59.00`, ale wykonanie zapisało `129.5` i `59`, bo JSON nie przechowuje zer końcowych.
+Fixture zapisuje wartości **po wykonaniu**. To samo dotyczy `lineTotal: 259` i `177`.
+
+### 7.6 Manifest
+
+`fixtures/MANIFEST.json` opisuje **każdy** plik w `fixtures/` oprócz siebie samego (nie może
+zawierać własnej sumy): ścieżka, rozmiar, sha256, źródło (tabela + kolumna + identyfikator
+wiersza) i znacznik ekstrakcji. Dodatkowo nagłówek z sumą i licznościami migawki oraz sekcja
+`polaPominiete`. Weryfikacja drugą, niezależną drogą — przez `sha256sum --check`, bez Pythona
+i bez migawki:
+
+```
+$ ./fixtures/_narzedzia/sprawdz-sumy.sh fixtures
+katalog:  fixtures
+manifest: 23 wpisow, ekstrakcja 2026-09-18T17:33:46Z
+
+README.md: OK
+_artefakty-historyczne/prototyp-iframe-test-ICRY74rH9w6xbTqr/definicja-n8n.json: OK
+_artefakty-historyczne/srednia-temperatura-trzech-miast-rnfu7SOGxjqaUbYH/definicja-n8n.json: OK
+_narzedzia/ekstrakcja.py: OK
+_narzedzia/flatted.py: OK
+_narzedzia/sprawdz-sumy.sh: OK
+_narzedzia/weryfikuj.py: OK
+demo-mcp-wartosc-zamowienia/definicja-n8n.json: OK
+demo-mcp-wartosc-zamowienia/oczekiwane-wyjscie.json: OK
+demo-mcp-wartosc-zamowienia/wejscie.json: OK
+lista-produktow-suma-zamowienia/definicja-n8n.json: OK
+lista-produktow-suma-zamowienia/oczekiwane-wyjscie.json: OK
+lista-produktow-suma-zamowienia/wejscie.json: OK
+premie-od-pensji/definicja-n8n.json: OK
+premie-od-pensji/oczekiwane-wyjscie.json: OK
+premie-od-pensji/wejscie.json: OK
+premie-od-pensji/wersje/01-3b7f786f-b83d-4845-97cc-21b0f780b573.json: OK
+premie-od-pensji/wersje/02-677655e1-cc91-497b-95b0-ea570dd73a08.json: OK
+premie-od-pensji/wersje/03-74e1d18e-91f6-4aab-a100-a4e035dfb14a.json: OK
+premie-od-pensji/wersje/04-2a2d5435-eded-42e9-b78f-8be0bfafb1b3.json: OK
+status-ok/definicja-n8n.json: OK
+status-ok/oczekiwane-wyjscie.json: OK
+status-ok/wejscie.json: OK
+
+--- rozmiary ---   (23 pozycje, wszystkie OK — pominięte dla zwięzłości)
+EXIT=0
+```
+
+`weryfikuj.py` sprawdza dodatkowo **pokrycie**: `23 wpisow = 23 plikow na dysku
+(bez MANIFEST.json); nadmiarowe na dysku: brak`. Plik dołożony do `fixtures/` bez
+przeliczenia manifestu zostanie wykryty.
+
+**Jedna rzecz, której manifest nie daje: powtarzalności bajt w bajt.** Każdy plik nosi
+`_kontekst.znacznikEkstrakcji`, więc ponowne uruchomienie ekstrakcji zmienia znacznik,
+a przez to wszystkie sumy. Powtarzalna jest **treść merytoryczna** — do jej porównania służy
+`weryfikuj.py`, który czyta z migawki, a nie z poprzedniego przebiegu.
+
+### 7.7 Skan na sekrety
+
+18 plików danych (wszystkie `*.json` w `fixtures/` poza `MANIFEST.json`, razem 63 221 B),
+wzorce słownikowe, bez rozróżniania wielkości liter:
+
+```
+$ grep -rniE 'token|hash|secret|key|passw|credential|api[_-]?key|bearer|authorization|encryption|jwt|hmac|signing' \
+       fixtures --include='*.json' --exclude='MANIFEST.json'
+(brak wyjścia)   rc=1
+```
+
+Całe `fixtures/`, wzorce na **kształt** sekretu (bcrypt, 32-hex, 64-hex, JWT, base64 ≥ 40 znaków),
+z pominięciem zadeklarowanych sum sha256 w manifeście:
+
+```
+$ grep -rnE '\$2[aby]\$[0-9]{2}\$|\b[0-9a-f]{32}\b|\b[0-9a-f]{64}\b|eyJ[A-Za-z0-9_-]{10,}\.|[A-Za-z0-9+/]{40,}={0,2}' \
+       fixtures/ | grep -v '^fixtures/MANIFEST.json:.*"sha256"'
+(brak wyjścia)   rc=1
+```
+
+Nazwy zakazanych tabel i pól w plikach danych:
+
+```
+$ grep -rniE 'credentials_entity|user_api_keys|deployment_key|N8N_MCP_TOKEN|encryptionKey|resumeToken' \
+       fixtures/ --include='*.json' | grep -v MANIFEST.json
+(brak wyjścia)   rc=1
+```
+
+**Uczciwe zastrzeżenie: skan słownikowy po *całym* katalogu daje 31 trafień, nie zero.**
+Rozkładają się tak — `_narzedzia/ekstrakcja.py` 17, `README.md` 9, `_narzedzia/weryfikuj.py` 3,
+`MANIFEST.json` 2 — i wszystkie są **prozą, kodem albo metadanymi, nigdy wartością**:
+README wymienia, czego tu nie ma („hash hasła właściciela", „`deployment_key`",
+„`N8N_MCP_TOKEN`"); skrypty zawierają `import hashlib`, `hashlib.sha256()`, `key=str`
+w `sorted()` i literały samych wzorców ochronnych (`re.compile(r"resumeToken")`);
+manifest ma `"credentials_entity": 0` w licznościach i nazwę pominiętego pola
+w `polaPominiete`. Zero z tych 31 wierszy niesie sekret. Podaję tę liczbę, bo raport,
+który dobiera zakres skanu tak, żeby wyszło zero, jest wart mniej niż ten, który pokazuje
+trafienia i je rozlicza.
+
+Trzecia linia obrony jest **przed** zapisem, nie po: `ekstrakcja.py` skanuje treść każdego
+pliku wzorcami `resumeToken`, `encryptionKey`, bcrypt i 64-hex i **przerywa pracę**, gdy coś
+złapie. Manifest ma węższy zestaw (bcrypt, `encryptionKey`), bo z założenia zawiera sumy
+sha256 i nazywa pominięte pole.
+
+**Pola pominięte świadomie:** `execution_data.data → resumeToken` — 64-znakowy token
+wznowienia wykonania, obecny w każdym z 12 wierszy. Nie jest przepisywany do żadnego pliku;
+pominięcie odnotowane w `MANIFEST.json` pod `polaPominiete`.
+
+### 7.8 Czego nie dało się wyciągnąć
+
+1. **Trzech pośrednich wersji `Premie 8% od pensji` z `workflow_history`** — bo ich tam nie ma
+   i nigdy nie było (§1.1). Wyciągnięto je z migawek wykonań; to **jedyne** dostępne źródło.
+   Gdyby wykonania #6, #9 i #10 kiedyś skasowano, tej historii nie odzyska nikt.
+2. **`versionId` z `execution_data.workflowData`** — kolumna go nie zawiera (§7.3).
+   Przypisanie idzie z `execution_entity.workflowVersionId`. Gdyby te dwie tabele się
+   rozjechały, plik `wersje/NN-<uuid>.json` niósłby złą etykietę; sprawdzone, że nie rozjeżdżają
+   się w żadnym z 5 wykonań Premii, ale to sprawdzenie, nie gwarancja formatu.
+3. **Wersji pośrednich pozostałych 14 workflow** — nie istnieją, bo każdy z nich powstał
+   jednym strzałem i ma dokładnie jedną wersję. To nie jest luka, to fakt o tej instancji.
+4. **Danych wejściowych „z zewnątrz"** — nie ma takich. Wszystkie cztery procesy startują
+   z `manualTrigger`, który produkuje jeden pusty element; wejście dziedzinowe jest zaszyte
+   w węźle `set`/`code`. `wejscie.json` wypisuje je jawnie, ale to jest **rekonstrukcja
+   z wykonania**, nie zapis tego, co ktoś podał — bo nikt nic nie podawał.
+5. **Wyników węzłów pośrednich** — celowo pominięte, nie utracone. W migawce są
+   (`Premia 8%`, `Dodatek 50 zl`, `Stawka podatku`, `Podatek dochodowy`), ale kontrakt dla
+   granic kroków pośrednich zależy od wyboru wariantu A/B rozgałęzienia (§4.4), a ten wybór
+   jeszcze nie padł. Odtworzenie jest tanie: `flatted.py` + jedno zapytanie.
+6. **Wykonań #1, #2, #5, #8** — nie wchodzą do fixture, bo dotyczą workflow ZBĘDNYCH albo
+   ARTEFAKTÓW-HISTORYCZNYCH, dla których zachowujemy samą definicję. Zostają w wolumenie.
+7. **Sprawdzenia, czy `N8N_MCP_TOKEN` z `.env` to klucz `yRsJFnUDDaTaUKZy`** — §5 pkt 4
+   nadal otwarty. Nie porównywałem wartości, bo to wymagałoby wzięcia sekretu do ręki,
+   a fixture i tak nie mogą go zawierać.
+8. **Czegokolwiek z `credentials_entity`** — tabela ma 0 wierszy (potwierdzone na migawce,
+   §7.2). Nie ma czego wyciągać, a nie „nie udało się".
+
+### 7.9 Zmiany stanu wprowadzone przez tę ekstrakcję
+
+W konwencji §6:
+
+1. **Trzy kontenery pomocnicze**, każdy `docker run --rm` (usuwany natychmiast), obraz
+   `alpine:latest` już obecny lokalnie: sondaż dostępności `sqlite`, online-backup bazy,
+   kopia samego `database.sqlite` na dowód niespójności z §7.1. Wolumen
+   `n8niframe_n8n_data` montowany za każdym razem **wyłącznie `:ro`**. Zero kontenerów
+   długo żyjących, zero portów, zero projektu compose.
+2. **Zero zapisów do wolumenu.** Listing po pracy jest identyczny z listingiem sprzed pracy
+   co do rozmiarów i znaczników czasu wszystkich 11 pozycji: `database.sqlite` 2 129 920 B
+   (14 wrz 21:25), `-wal` 1 083 592 B (18 wrz 17:20), `-shm` 32 768 B (18 wrz 17:20).
+3. **Kontener `n8niframe-n8n` działał przez cały czas i działa nadal** (`Up 5 hours`).
+   Zero restartów, zero `docker compose down`, zero operacji na wolumenach.
+4. **Zero wywołań REST API n8n i zero wywołań `/api/chat`.** Ta ekstrakcja, w odróżnieniu
+   od §6 pkt 1, **nie logowała się do silnika** — cała wiedza pochodzi z migawki. Liczniki
+   na koniec: 15 workflow, 12 wykonań — bez zmian wobec §0.
+5. **Utworzony katalog `fixtures/` (23 pliki) i ta sekcja.** Żaden inny plik
+   w repozytorium nie został zmieniony.
+6. **Migawka bazy zostaje w katalogu tymczasowym sesji** i zniknie razem z nią (§7.2).
+   To jest świadoma decyzja, nie przeoczenie: plik zawiera materiał, którego nie wolno
+   położyć w repozytorium, a `fixtures/` wystarczą do wszystkiego, po co go robiono.

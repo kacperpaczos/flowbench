@@ -1,0 +1,303 @@
+{
+  "_kontekst": {
+    "workflowId": "aEUUAnNsUr7LJIyr",
+    "nazwaN8n": "Premie 8% od pensji",
+    "dagRoboczy": "premie-od-pensji",
+    "versionId": "2a2d5435-eded-42e9-b78f-8be0bfafb1b3",
+    "kolejnosc": 4,
+    "kolejnoscZ": 4,
+    "wersjaBiezaca": true,
+    "obecnaWWorkflowHistory": true,
+    "sekcjaRejestru": "§1.1",
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "_zrodlo": {
+    "opis": "Pelna definicja procesu w chwili wykonania. Dla trzech wersji posrednich to JEDYNE miejsce, w ktorym przetrwaly: tabela workflow_history trzyma wylacznie stan biezacy.",
+    "tabela": "execution_data",
+    "kolumna": "workflowData",
+    "wiersze": [
+      "executionId = 11"
+    ],
+    "versionIdZ": "execution_entity.workflowVersionId (= execution_data.workflowVersionId, sprawdzone)"
+  },
+  "wykonania": [
+    {
+      "wykonanie": 11,
+      "rozpoczete": "2026-09-15 09:28:20.650",
+      "zakonczone": "2026-09-15 09:28:20.746",
+      "status": "success"
+    }
+  ],
+  "liczbaWezlow": 7,
+  "wezly": [
+    "Start",
+    "Dane pracownikow",
+    "Premia 8%",
+    "Suma premii",
+    "Dodatek 50 zl",
+    "Stawka podatku",
+    "Podatek dochodowy"
+  ],
+  "definicja": {
+    "id": "aEUUAnNsUr7LJIyr",
+    "name": "Premie 8% od pensji",
+    "nodes": [
+      {
+        "id": "1d826ce7-e857-45b1-9f2e-5e333efce1a8",
+        "name": "Start",
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "parameters": {
+          "notice": ""
+        }
+      },
+      {
+        "id": "464f5d6c-e5dc-46a8-9d6b-7c8cacb444d7",
+        "name": "Dane pracownikow",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          224,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "// Dane przykladowe - trzej pracownicy\nconst pracownicy = [\n  { imie: 'Anna Kowalska', stanowisko: 'Analityk', pensja: 7200 },\n  { imie: 'Piotr Nowak', stanowisko: 'Developer', pensja: 11500 },\n  { imie: 'Maria Wisniewska', stanowisko: 'Kierownik', pensja: 15800 }\n];\nreturn pracownicy.map(p => ({ json: p }));",
+          "notice": ""
+        }
+      },
+      {
+        "id": "e94d984c-255c-4a3d-8c83-b605c217d76e",
+        "name": "Premia 8%",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          448,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "duplicateItem": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "stawka-premii",
+                "name": "stawkaPremii",
+                "value": 0.08,
+                "type": "number"
+              },
+              {
+                "id": "premia",
+                "name": "premia",
+                "value": "={{ Math.round($json.pensja * 0.08 * 100) / 100 }}",
+                "type": "number"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "include": "all",
+          "options": {}
+        }
+      },
+      {
+        "id": "fed4d1e8-7ef5-44a0-aad4-f41e94c31d53",
+        "name": "Suma premii",
+        "type": "n8n-nodes-base.code",
+        "typeVersion": 2,
+        "position": [
+          1344,
+          0
+        ],
+        "parameters": {
+          "mode": "runOnceForAllItems",
+          "language": "javaScript",
+          "jsCode": "const items = $input.all();\nconst suma = (f) => Math.round(items.reduce((a, i) => a + i.json[f], 0) * 100) / 100;\nreturn [{ json: {\n  liczbaPracownikow: items.length,\n  sumaPensji: suma('pensja'),\n  sumaPremii: suma('premia'),\n  sumaDodatkow: suma('dodatek'),\n  sumaPremiiRazem: suma('premiaRazem'),\n  sumaPodatku: suma('podatek'),\n  sumaNaDoReke: suma('naDoReke'),\n  szczegoly: items.map(i => ({ imie: i.json.imie, pensja: i.json.pensja, premia: i.json.premia, dodatek: i.json.dodatek, premiaRazem: i.json.premiaRazem, stawkaPodatku: i.json.stawkaPodatku, podatek: i.json.podatek, naDoReke: i.json.naDoReke }))\n} }];",
+          "notice": ""
+        }
+      },
+      {
+        "id": "71a92f0c-0259-46e1-a95a-c1639d589de0",
+        "name": "Dodatek 50 zl",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          672,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "duplicateItem": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "dodatek",
+                "name": "dodatek",
+                "value": 50,
+                "type": "number"
+              },
+              {
+                "id": "premia-razem",
+                "name": "premiaRazem",
+                "value": "={{ Math.round(($json.premia + 50) * 100) / 100 }}",
+                "type": "number"
+              },
+              {
+                "id": "razem",
+                "name": "pensjaZPremia",
+                "value": "={{ Math.round(($json.pensja + $json.premia + 50) * 100) / 100 }}",
+                "type": "number"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "include": "all",
+          "options": {}
+        }
+      },
+      {
+        "id": "aa571a1c-5ec8-4770-9ebf-3d4d6a5760e2",
+        "name": "Stawka podatku",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          896,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "duplicateItem": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "prog",
+                "name": "progPodatkowy",
+                "value": 10000,
+                "type": "number"
+              },
+              {
+                "id": "stawka-podatku",
+                "name": "stawkaPodatku",
+                "value": "={{ $json.pensjaZPremia > 10000 ? 0.32 : 0.12 }}",
+                "type": "number"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "include": "all",
+          "options": {}
+        }
+      },
+      {
+        "id": "72ff07b8-8c6a-468b-8c4c-fc45fa6091fc",
+        "name": "Podatek dochodowy",
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.4,
+        "position": [
+          1120,
+          0
+        ],
+        "parameters": {
+          "mode": "manual",
+          "duplicateItem": false,
+          "assignments": {
+            "assignments": [
+              {
+                "id": "podatek",
+                "name": "podatek",
+                "value": "={{ Math.round($json.pensjaZPremia * $json.stawkaPodatku * 100) / 100 }}",
+                "type": "number"
+              },
+              {
+                "id": "netto",
+                "name": "naDoReke",
+                "value": "={{ Math.round(($json.pensjaZPremia - $json.pensjaZPremia * $json.stawkaPodatku) * 100) / 100 }}",
+                "type": "number"
+              }
+            ]
+          },
+          "includeOtherFields": true,
+          "include": "all",
+          "options": {}
+        }
+      }
+    ],
+    "connections": {
+      "Start": {
+        "main": [
+          [
+            {
+              "node": "Dane pracownikow",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dane pracownikow": {
+        "main": [
+          [
+            {
+              "node": "Premia 8%",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Premia 8%": {
+        "main": [
+          [
+            {
+              "node": "Dodatek 50 zl",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Dodatek 50 zl": {
+        "main": [
+          [
+            {
+              "node": "Stawka podatku",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Stawka podatku": {
+        "main": [
+          [
+            {
+              "node": "Podatek dochodowy",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      },
+      "Podatek dochodowy": {
+        "main": [
+          [
+            {
+              "node": "Suma premii",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "availableInMCP": true
+    },
+    "nodeGroups": []
+  }
+}

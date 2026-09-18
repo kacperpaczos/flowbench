@@ -1,0 +1,119 @@
+{
+  "_kontekst": {
+    "workflowId": "UQeWUmSDcg9gKXXY",
+    "nazwaN8n": "Lista produktow i suma zamowienia",
+    "dagRoboczy": "lista-produktow-suma-zamowienia",
+    "wykonanie": 4,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-14 21:15:34.199",
+    "zakonczone": "2026-09-14 21:15:34.268",
+    "versionIdWykonania": "afec6bbd-14c2-4164-b502-64d3f6a3dd4e",
+    "versionIdBiezacy": "afec6bbd-14c2-4164-b502-64d3f6a3dd4e",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.3",
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "_zrodlo": {
+    "opis": "Wynik ostatniego wykonanego wezla, przepisany z migawki wykonania bez upraszczania: te same pola, ta sama kolejnosc, te same typy i ta sama precyzja liczb.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 4",
+    "sciezka": "resultData.runData[\"Policz sume zamowienia\"][0].data.main[0][*].json"
+  },
+  "ostatniWezel": {
+    "nazwa": "Policz sume zamowienia",
+    "typ": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "statusWezla": "success",
+    "czasWykonaniaMs": 24
+  },
+  "kolejnoscWezlow": [
+    "Start",
+    "Lista produktow",
+    "Policz sume zamowienia"
+  ],
+  "liczbaElementow": 1,
+  "elementy": [
+    {
+      "orderId": "ZAM-2026-001",
+      "currency": "PLN",
+      "lines": [
+        {
+          "sku": "P-001",
+          "name": "Klawiatura mechaniczna",
+          "unitPrice": 349.99,
+          "quantity": 1,
+          "lineTotal": 349.99
+        },
+        {
+          "sku": "P-002",
+          "name": "Mysz bezprzewodowa",
+          "unitPrice": 129.5,
+          "quantity": 2,
+          "lineTotal": 259
+        },
+        {
+          "sku": "P-003",
+          "name": "Podkladka pod mysz XL",
+          "unitPrice": 59,
+          "quantity": 3,
+          "lineTotal": 177
+        }
+      ],
+      "itemCount": 3,
+      "unitsTotal": 6,
+      "subtotal": 785.99,
+      "vatRate": 0.23,
+      "vat": 180.78,
+      "total": 966.77
+    }
+  ],
+  "kopertyN8n": [
+    {
+      "item": 0
+    }
+  ],
+  "typy": {
+    "[]": "object",
+    "[].currency": "string",
+    "[].itemCount": "integer",
+    "[].lines": "array",
+    "[].lines[]": "object",
+    "[].lines[].lineTotal": [
+      "integer",
+      "number"
+    ],
+    "[].lines[].name": "string",
+    "[].lines[].quantity": "integer",
+    "[].lines[].sku": "string",
+    "[].lines[].unitPrice": [
+      "integer",
+      "number"
+    ],
+    "[].orderId": "string",
+    "[].subtotal": "number",
+    "[].total": "number",
+    "[].unitsTotal": "integer",
+    "[].vat": "number",
+    "[].vatRate": "number"
+  },
+  "precyzjaLiczb": {
+    "[].itemCount": 0,
+    "[].lines[].lineTotal": [
+      0,
+      2
+    ],
+    "[].lines[].quantity": 0,
+    "[].lines[].unitPrice": [
+      0,
+      1,
+      2
+    ],
+    "[].subtotal": 2,
+    "[].total": 2,
+    "[].unitsTotal": 0,
+    "[].vat": 2,
+    "[].vatRate": 2
+  }
+}

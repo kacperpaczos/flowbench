@@ -1,0 +1,83 @@
+{
+  "_kontekst": {
+    "workflowId": "ICRY74rH9w6xbTqr",
+    "nazwaN8n": "Prototyp iframe - test",
+    "klasyfikacja": "ARTEFAKT-HISTORYCZNY",
+    "powodZachowania": "jedyny slad wykonania silnika PRZED podlaczeniem MCP (wykonanie #1)",
+    "sekcjaRejestru": "§2",
+    "odtwarzanyWDagu": false,
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "definicja": {
+    "id": "ICRY74rH9w6xbTqr",
+    "name": "Prototyp iframe - test",
+    "active": false,
+    "nodes": [
+      {
+        "parameters": {},
+        "type": "n8n-nodes-base.manualTrigger",
+        "typeVersion": 1,
+        "position": [
+          0,
+          0
+        ],
+        "id": "d46e03b3-6ee3-4a37-a15a-0bd53f45fb44",
+        "name": "When clicking ‘Execute workflow’"
+      },
+      {
+        "parameters": {
+          "assignments": {
+            "assignments": [
+              {
+                "id": "35383a2d-3a50-4044-94a5-fbff00619343",
+                "name": "wiadomosc",
+                "value": "Witaj z prototypu",
+                "type": "string"
+              }
+            ]
+          },
+          "options": {}
+        },
+        "type": "n8n-nodes-base.set",
+        "typeVersion": 3.5,
+        "position": [
+          224,
+          0
+        ],
+        "id": "ea862f69-61e3-4fec-8072-4275f76d9001",
+        "name": "Edit Fields"
+      }
+    ],
+    "connections": {
+      "When clicking ‘Execute workflow’": {
+        "main": [
+          [
+            {
+              "node": "Edit Fields",
+              "type": "main",
+              "index": 0
+            }
+          ]
+        ]
+      }
+    },
+    "settings": {
+      "executionOrder": "v1",
+      "binaryMode": "separate"
+    },
+    "staticData": null,
+    "pinData": {},
+    "versionId": "e1cafb07-ee08-4e83-9448-a20315bbac21",
+    "triggerCount": 0,
+    "meta": null,
+    "parentFolderId": null,
+    "createdAt": "2026-09-14 12:14:17.581",
+    "updatedAt": "2026-09-14 12:14:44.832",
+    "isArchived": false,
+    "versionCounter": 4,
+    "description": null,
+    "activeVersionId": null,
+    "nodeGroups": [],
+    "sourceWorkflowId": null
+  }
+}

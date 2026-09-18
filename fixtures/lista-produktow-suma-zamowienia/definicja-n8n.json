@@ -1,0 +1,93 @@
+{
+  "id": "UQeWUmSDcg9gKXXY",
+  "name": "Lista produktow i suma zamowienia",
+  "active": false,
+  "nodes": [
+    {
+      "id": "44a92c65-3cdc-493e-8618-b42dafcf2981",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "625e74df-5067-4104-ae54-a46d26a597a7",
+      "name": "Lista produktow",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "raw",
+        "jsonOutput": "{\n  \"orderId\": \"ZAM-2026-001\",\n  \"currency\": \"PLN\",\n  \"items\": [\n    { \"sku\": \"P-001\", \"name\": \"Klawiatura mechaniczna\", \"unitPrice\": 349.99, \"quantity\": 1 },\n    { \"sku\": \"P-002\", \"name\": \"Mysz bezprzewodowa\", \"unitPrice\": 129.50, \"quantity\": 2 },\n    { \"sku\": \"P-003\", \"name\": \"Podkladka pod mysz XL\", \"unitPrice\": 59.00, \"quantity\": 3 }\n  ]\n}",
+        "options": {}
+      }
+    },
+    {
+      "id": "c56ec11e-8d48-4848-8f1d-a139171d8a52",
+      "name": "Policz sume zamowienia",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "language": "javaScript",
+        "jsCode": "const order = $input.first().json;\nconst round2 = (n) => Math.round(n * 100) / 100;\n\nconst lines = order.items.map((item) => {\n  const lineTotal = round2(item.unitPrice * item.quantity);\n  return { ...item, lineTotal };\n});\n\nconst subtotal = round2(lines.reduce((acc, l) => acc + l.lineTotal, 0));\nconst vatRate = 0.23;\nconst vat = round2(subtotal * vatRate);\nconst total = round2(subtotal + vat);\n\nreturn [{\n  json: {\n    orderId: order.orderId,\n    currency: order.currency,\n    lines,\n    itemCount: lines.length,\n    unitsTotal: lines.reduce((acc, l) => acc + l.quantity, 0),\n    subtotal,\n    vatRate,\n    vat,\n    total\n  }\n}];"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Lista produktow",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lista produktow": {
+      "main": [
+        [
+          {
+            "node": "Policz sume zamowienia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "staticData": null,
+  "pinData": null,
+  "versionId": "afec6bbd-14c2-4164-b502-64d3f6a3dd4e",
+  "triggerCount": 0,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "parentFolderId": null,
+  "createdAt": "2026-09-14 21:15:32.616",
+  "updatedAt": "2026-09-14 21:15:32.616",
+  "isArchived": false,
+  "versionCounter": 1,
+  "description": "Manualny trigger, Set z trzema produktami przykladowymi i Code liczacy wartosci pozycji, sume netto, VAT 23% i sume brutto.",
+  "activeVersionId": null,
+  "nodeGroups": [],
+  "sourceWorkflowId": null
+}

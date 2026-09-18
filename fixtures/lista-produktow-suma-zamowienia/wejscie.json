@@ -1,0 +1,93 @@
+{
+  "_kontekst": {
+    "workflowId": "UQeWUmSDcg9gKXXY",
+    "nazwaN8n": "Lista produktow i suma zamowienia",
+    "dagRoboczy": "lista-produktow-suma-zamowienia",
+    "wykonanie": 4,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-14 21:15:34.199",
+    "zakonczone": "2026-09-14 21:15:34.268",
+    "versionIdWykonania": "afec6bbd-14c2-4164-b502-64d3f6a3dd4e",
+    "versionIdBiezacy": "afec6bbd-14c2-4164-b502-64d3f6a3dd4e",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.3",
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "_zrodlo": {
+    "opis": "Proces nie przyjmuje danych z zewnatrz: wyzwalaczem jest manualTrigger, ktory produkuje jeden pusty element. Faktyczne wejscie dziedzinowe jest ZASZYTE w pierwszym wezle produkujacym dane i tutaj wypisane jawnie.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 4",
+    "sciezka": "resultData.runData[\"Lista produktow\"][0].data.main[0][*].json",
+    "gdzieZaszyteWDefinicji": "nodes[name='Lista produktow'].parameters.jsonOutput (tekst JSON)"
+  },
+  "wyzwalacz": {
+    "wezel": "Start",
+    "typ": "n8n-nodes-base.manualTrigger",
+    "elementy": [
+      {}
+    ]
+  },
+  "wezelWejscia": {
+    "nazwa": "Lista produktow",
+    "typ": "n8n-nodes-base.set",
+    "typeVersion": 3.5,
+    "tryb": "raw"
+  },
+  "deklaracjeTypowN8n": null,
+  "liczbaElementow": 1,
+  "elementy": [
+    {
+      "orderId": "ZAM-2026-001",
+      "currency": "PLN",
+      "items": [
+        {
+          "sku": "P-001",
+          "name": "Klawiatura mechaniczna",
+          "unitPrice": 349.99,
+          "quantity": 1
+        },
+        {
+          "sku": "P-002",
+          "name": "Mysz bezprzewodowa",
+          "unitPrice": 129.5,
+          "quantity": 2
+        },
+        {
+          "sku": "P-003",
+          "name": "Podkladka pod mysz XL",
+          "unitPrice": 59,
+          "quantity": 3
+        }
+      ]
+    }
+  ],
+  "kopertyN8n": [
+    {
+      "item": 0
+    }
+  ],
+  "typy": {
+    "[]": "object",
+    "[].currency": "string",
+    "[].items": "array",
+    "[].items[]": "object",
+    "[].items[].name": "string",
+    "[].items[].quantity": "integer",
+    "[].items[].sku": "string",
+    "[].items[].unitPrice": [
+      "integer",
+      "number"
+    ],
+    "[].orderId": "string"
+  },
+  "precyzjaLiczb": {
+    "[].items[].quantity": 0,
+    "[].items[].unitPrice": [
+      0,
+      1,
+      2
+    ]
+  }
+}

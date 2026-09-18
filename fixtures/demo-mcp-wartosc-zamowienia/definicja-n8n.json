@@ -1,0 +1,113 @@
+{
+  "id": "ag3nCPjnADFqUADE",
+  "name": "Demo MCP - wartosc zamowienia",
+  "active": false,
+  "nodes": [
+    {
+      "id": "3fc7b315-cc05-4b9b-be5d-d582cd14bedf",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "8d163407-9af0-4d17-8d9b-342aaa40bcde",
+      "name": "Pozycja zamowienia",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "produkt",
+              "value": "Kabel HDMI 2.1",
+              "type": "string"
+            },
+            {
+              "id": "a2",
+              "name": "cenaNetto",
+              "value": 49.99,
+              "type": "number"
+            },
+            {
+              "id": "a3",
+              "name": "ilosc",
+              "value": 3,
+              "type": "number"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "3a2506b8-7d3f-4278-8e21-12ef105bac42",
+      "name": "Policz wartosc brutto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        448,
+        0
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const netto = item.json.cenaNetto * item.json.ilosc;\n  const brutto = Math.round(netto * 1.23 * 100) / 100;\n  out.push({ json: { produkt: item.json.produkt, ilosc: item.json.ilosc, netto: Math.round(netto * 100) / 100, brutto } });\n}\nreturn out;"
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Pozycja zamowienia",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pozycja zamowienia": {
+      "main": [
+        [
+          {
+            "node": "Policz wartosc brutto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "staticData": null,
+  "pinData": null,
+  "versionId": "c0bbe46e-6439-4e23-99ec-1d84ffbfa3cd",
+  "triggerCount": 0,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "parentFolderId": null,
+  "createdAt": "2026-09-14 19:11:50.824",
+  "updatedAt": "2026-09-14 19:11:50.824",
+  "isArchived": false,
+  "versionCounter": 1,
+  "description": "Workflow napisany przez model przez MCP",
+  "activeVersionId": null,
+  "nodeGroups": [],
+  "sourceWorkflowId": null
+}

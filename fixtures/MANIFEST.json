@@ -1,0 +1,454 @@
+{
+  "wersjaManifestu": 1,
+  "znacznikEkstrakcji": "2026-09-18T17:33:46Z",
+  "migawka": {
+    "opis": "Spojna migawka zywej bazy n8n zrobiona natywnym online-backupem SQLite (`.backup`) z wolumenu zamontowanego read-only. Plik NIE wchodzi do repozytorium.",
+    "nazwaPliku": "database.snapshot.sqlite",
+    "rozmiarB": 2207744,
+    "sha256": "435c6392fb61b740112d0c4ff93293afb9e7edab84d7cf11f32899bf791039a2",
+    "integrity_check": "ok",
+    "liczbaWierszy": {
+      "workflow_entity": 15,
+      "execution_entity": 12,
+      "execution_data": 12,
+      "workflow_history": 15,
+      "credentials_entity": 0
+    }
+  },
+  "zrodloDanych": {
+    "wolumen": "n8niframe_n8n_data",
+    "kontener": "n8niframe-n8n",
+    "plik": "/home/node/.n8n/database.sqlite (+ -wal, -shm)",
+    "montowanie": "read-only"
+  },
+  "polaPominiete": {
+    "execution_data.data → resumeToken": "64-znakowy token wznowienia wykonania; material sesyjny silnika n8n, bez wartosci dla odtworzenia procesu"
+  },
+  "liczbaPlikow": 23,
+  "uwagaOManifescie": "Manifest pokrywa kazdy plik w fixtures/ oprocz samego MANIFEST.json — nie moze zawierac wlasnej sumy kontrolnej.",
+  "pliki": [
+    {
+      "sciezka": "README.md",
+      "rozmiarB": 18343,
+      "sha256": "412c2e01564ccbf002ab3018a42e5161b9312e858d382f9ab63294df6084e128",
+      "zrodlo": {
+        "typ": "dokumentacja",
+        "opis": "opis pochodzenia fixture, sposobu odtworzenia ekstrakcji i rozliczenia wszystkich 15 workflow"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "_artefakty-historyczne/prototyp-iframe-test-ICRY74rH9w6xbTqr/definicja-n8n.json",
+      "rozmiarB": 2100,
+      "sha256": "e69f5e3c957fe558048d9969fc880087fb4da2a829cefabb5102dd73acce5bdc",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "workflow_entity",
+        "kolumny": [
+          "id",
+          "name",
+          "active",
+          "nodes",
+          "connections",
+          "settings",
+          "staticData",
+          "pinData",
+          "versionId",
+          "triggerCount",
+          "meta",
+          "parentFolderId",
+          "createdAt",
+          "updatedAt",
+          "isArchived",
+          "versionCounter",
+          "description",
+          "activeVersionId",
+          "nodeGroups",
+          "sourceWorkflowId"
+        ],
+        "wiersz": "id = 'ICRY74rH9w6xbTqr'",
+        "uwaga": "kolumny trzymajace JSON jako tekst (nodes, connections, settings, staticData, pinData, meta, nodeGroups) rozpakowane do struktury; reszta bez zmian"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "_artefakty-historyczne/srednia-temperatura-trzech-miast-rnfu7SOGxjqaUbYH/definicja-n8n.json",
+      "rozmiarB": 3397,
+      "sha256": "9b40b502a355cc2d5efe18a96318340dfc2070c2496c626c9399d92f38c502a6",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "workflow_entity",
+        "kolumny": [
+          "id",
+          "name",
+          "active",
+          "nodes",
+          "connections",
+          "settings",
+          "staticData",
+          "pinData",
+          "versionId",
+          "triggerCount",
+          "meta",
+          "parentFolderId",
+          "createdAt",
+          "updatedAt",
+          "isArchived",
+          "versionCounter",
+          "description",
+          "activeVersionId",
+          "nodeGroups",
+          "sourceWorkflowId"
+        ],
+        "wiersz": "id = 'rnfu7SOGxjqaUbYH'",
+        "uwaga": "kolumny trzymajace JSON jako tekst (nodes, connections, settings, staticData, pinData, meta, nodeGroups) rozpakowane do struktury; reszta bez zmian"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "_narzedzia/ekstrakcja.py",
+      "rozmiarB": 22162,
+      "sha256": "b2a63850c7ff0e3035c11ee41581ae6bde87b232cb68a1ff4e86782db48da5fc",
+      "zrodlo": {
+        "typ": "narzedzie",
+        "opis": "skrypt, ktory wygenerowal to drzewo"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "_narzedzia/flatted.py",
+      "rozmiarB": 1018,
+      "sha256": "5ecd90ba18b815f858ab319e0a085a98e189132cb46b8383172744fa1eeca4fa",
+      "zrodlo": {
+        "typ": "narzedzie",
+        "opis": "dekoder formatu `flatted` z execution_data.data"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "_narzedzia/sprawdz-sumy.sh",
+      "rozmiarB": 1206,
+      "sha256": "02842ba288a83a90e9cfad168a2e4eff3ec9496f2262d3cf3e82f24a72d6f6fd",
+      "zrodlo": {
+        "typ": "narzedzie",
+        "opis": "niezalezne przeliczenie sha256 z manifestu"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "_narzedzia/weryfikuj.py",
+      "rozmiarB": 9063,
+      "sha256": "3401e2a464666f3ddc5d8c7795a96547a837a4a4068999dda931bfa1a6c98f3c",
+      "zrodlo": {
+        "typ": "narzedzie",
+        "opis": "weryfikacja fixture wobec migawki i manifestu"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "demo-mcp-wartosc-zamowienia/definicja-n8n.json",
+      "rozmiarB": 2751,
+      "sha256": "edea6d6dcf11199a0673748a230edfa3f33a87c79bca4a3e3cc839798ab0db92",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "workflow_entity",
+        "kolumny": [
+          "id",
+          "name",
+          "active",
+          "nodes",
+          "connections",
+          "settings",
+          "staticData",
+          "pinData",
+          "versionId",
+          "triggerCount",
+          "meta",
+          "parentFolderId",
+          "createdAt",
+          "updatedAt",
+          "isArchived",
+          "versionCounter",
+          "description",
+          "activeVersionId",
+          "nodeGroups",
+          "sourceWorkflowId"
+        ],
+        "wiersz": "id = 'ag3nCPjnADFqUADE'",
+        "uwaga": "kolumny trzymajace JSON jako tekst (nodes, connections, settings, staticData, pinData, meta, nodeGroups) rozpakowane do struktury; reszta bez zmian"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "demo-mcp-wartosc-zamowienia/oczekiwane-wyjscie.json",
+      "rozmiarB": 1681,
+      "sha256": "01ff72dac8895d4e90964f88b98ab7eb7bd5f8fbc3895207d3d58ac0504e99ef",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": "executionId = 3",
+        "sciezka": "resultData.runData[\"Policz wartosc brutto\"][0].data.main[0]"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "demo-mcp-wartosc-zamowienia/wejscie.json",
+      "rozmiarB": 2101,
+      "sha256": "b7522e36bb8a9fb6a064da4bf870defe841ffa60ebd0ccf0b69d6adb5a5697bc",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": "executionId = 3",
+        "sciezka": "resultData.runData[\"Pozycja zamowienia\"][0].data.main[0]",
+        "uzupelnienie": "workflow_entity.nodes (wiersz id='ag3nCPjnADFqUADE') — deklaracje typow i tryb wezla"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "lista-produktow-suma-zamowienia/definicja-n8n.json",
+      "rozmiarB": 3100,
+      "sha256": "4482682bda16ab59b96ecc919a274b4168d12bfe08a8d9105332c74bfb2397d6",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "workflow_entity",
+        "kolumny": [
+          "id",
+          "name",
+          "active",
+          "nodes",
+          "connections",
+          "settings",
+          "staticData",
+          "pinData",
+          "versionId",
+          "triggerCount",
+          "meta",
+          "parentFolderId",
+          "createdAt",
+          "updatedAt",
+          "isArchived",
+          "versionCounter",
+          "description",
+          "activeVersionId",
+          "nodeGroups",
+          "sourceWorkflowId"
+        ],
+        "wiersz": "id = 'UQeWUmSDcg9gKXXY'",
+        "uwaga": "kolumny trzymajace JSON jako tekst (nodes, connections, settings, staticData, pinData, meta, nodeGroups) rozpakowane do struktury; reszta bez zmian"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "lista-produktow-suma-zamowienia/oczekiwane-wyjscie.json",
+      "rozmiarB": 2953,
+      "sha256": "d43ee08269ec5976d25b434b2afc2be2d21c227133047b9fe1cacc008d29878d",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": "executionId = 4",
+        "sciezka": "resultData.runData[\"Policz sume zamowienia\"][0].data.main[0]"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "lista-produktow-suma-zamowienia/wejscie.json",
+      "rozmiarB": 2470,
+      "sha256": "67d13378bb6fe274150d86df2a3c5bfdf4606f6bb0d3ea9861a0243c176c31a7",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": "executionId = 4",
+        "sciezka": "resultData.runData[\"Lista produktow\"][0].data.main[0]",
+        "uzupelnienie": "workflow_entity.nodes (wiersz id='UQeWUmSDcg9gKXXY') — deklaracje typow i tryb wezla"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "premie-od-pensji/definicja-n8n.json",
+      "rozmiarB": 7028,
+      "sha256": "a157b853d749070e23a8ed67b474e83613c54e2401830ee71a002cd9eb74f174",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "workflow_entity",
+        "kolumny": [
+          "id",
+          "name",
+          "active",
+          "nodes",
+          "connections",
+          "settings",
+          "staticData",
+          "pinData",
+          "versionId",
+          "triggerCount",
+          "meta",
+          "parentFolderId",
+          "createdAt",
+          "updatedAt",
+          "isArchived",
+          "versionCounter",
+          "description",
+          "activeVersionId",
+          "nodeGroups",
+          "sourceWorkflowId"
+        ],
+        "wiersz": "id = 'aEUUAnNsUr7LJIyr'",
+        "uwaga": "kolumny trzymajace JSON jako tekst (nodes, connections, settings, staticData, pinData, meta, nodeGroups) rozpakowane do struktury; reszta bez zmian"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "premie-od-pensji/oczekiwane-wyjscie.json",
+      "rozmiarB": 3546,
+      "sha256": "0efc92819d0065ed2698423deebc4e22c1fe31ccc265fe83f6deafb5c3af36db",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": "executionId = 11",
+        "sciezka": "resultData.runData[\"Suma premii\"][0].data.main[0]"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "premie-od-pensji/wejscie.json",
+      "rozmiarB": 2025,
+      "sha256": "336f825c50ae8bd96138c0b0295b38909fb42dff527b0eee5ce68e501731257b",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": "executionId = 11",
+        "sciezka": "resultData.runData[\"Dane pracownikow\"][0].data.main[0]",
+        "uzupelnienie": "workflow_entity.nodes (wiersz id='aEUUAnNsUr7LJIyr') — deklaracje typow i tryb wezla"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "premie-od-pensji/wersje/01-3b7f786f-b83d-4845-97cc-21b0f780b573.json",
+      "rozmiarB": 5032,
+      "sha256": "e032d15f09fc85c9bfc2208f53be946bb3f49377648b9bcfb5dd1babaf01dc83",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "workflowData",
+        "wiersze": [
+          "executionId = 6",
+          "executionId = 7"
+        ],
+        "klucz": "workflowVersionId = '3b7f786f-b83d-4845-97cc-21b0f780b573'"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "premie-od-pensji/wersje/02-677655e1-cc91-497b-95b0-ea570dd73a08.json",
+      "rozmiarB": 5568,
+      "sha256": "a14f048c15ee5fb7dd459ab488d9592b913e7730cfa31e9c465a85ab245c63f6",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "workflowData",
+        "wiersze": [
+          "executionId = 9"
+        ],
+        "klucz": "workflowVersionId = '677655e1-cc91-497b-95b0-ea570dd73a08'"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "premie-od-pensji/wersje/03-74e1d18e-91f6-4aab-a100-a4e035dfb14a.json",
+      "rozmiarB": 6283,
+      "sha256": "15d337787f4b83163beea5b22596720e1a4910fb980f1c451792d839cf23cc4c",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "workflowData",
+        "wiersze": [
+          "executionId = 10"
+        ],
+        "klucz": "workflowVersionId = '74e1d18e-91f6-4aab-a100-a4e035dfb14a'"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "premie-od-pensji/wersje/04-2a2d5435-eded-42e9-b78f-8be0bfafb1b3.json",
+      "rozmiarB": 8529,
+      "sha256": "38dc1f7aed6d2acc1ba1feff6f0f89fb1a9494da4ddf1efd6aa698e132c6abaa",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "workflowData",
+        "wiersze": [
+          "executionId = 11"
+        ],
+        "klucz": "workflowVersionId = '2a2d5435-eded-42e9-b78f-8be0bfafb1b3'"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "status-ok/definicja-n8n.json",
+      "rozmiarB": 1617,
+      "sha256": "0682d94a11c6cfa129a024592d9bd50b6842492be8dad1c587005552e4f1f2ab",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "workflow_entity",
+        "kolumny": [
+          "id",
+          "name",
+          "active",
+          "nodes",
+          "connections",
+          "settings",
+          "staticData",
+          "pinData",
+          "versionId",
+          "triggerCount",
+          "meta",
+          "parentFolderId",
+          "createdAt",
+          "updatedAt",
+          "isArchived",
+          "versionCounter",
+          "description",
+          "activeVersionId",
+          "nodeGroups",
+          "sourceWorkflowId"
+        ],
+        "wiersz": "id = 'gnzjOf2qHJoEPeGo'",
+        "uwaga": "kolumny trzymajace JSON jako tekst (nodes, connections, settings, staticData, pinData, meta, nodeGroups) rozpakowane do struktury; reszta bez zmian"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "status-ok/oczekiwane-wyjscie.json",
+      "rozmiarB": 1367,
+      "sha256": "27e9308e354eac263719fe767d697593c2bd5e7ce9912848a8d1f8c9891ed47a",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": "executionId = 12",
+        "sciezka": "resultData.runData[\"Set Status\"][0].data.main[0]"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    },
+    {
+      "sciezka": "status-ok/wejscie.json",
+      "rozmiarB": 1673,
+      "sha256": "7f85b6dc189117c9f22abcf2e0dad0360529e61ea125ab3f188125d435f0aa7d",
+      "zrodlo": {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": "executionId = 12",
+        "sciezka": "resultData.runData[\"Set Status\"][0].data.main[0]",
+        "uzupelnienie": "workflow_entity.nodes (wiersz id='gnzjOf2qHJoEPeGo') — deklaracje typow i tryb wezla"
+      },
+      "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    }
+  ]
+}

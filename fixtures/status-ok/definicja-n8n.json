@@ -1,0 +1,76 @@
+{
+  "id": "gnzjOf2qHJoEPeGo",
+  "name": "Status OK",
+  "active": false,
+  "nodes": [
+    {
+      "id": "53474739-929d-4428-9390-6b663f5ff17c",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "689d68c6-5b34-4bff-8dbb-7c86b2af5a01",
+      "name": "Set Status",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        224,
+        0
+      ],
+      "parameters": {
+        "mode": "manual",
+        "includeOtherFields": false,
+        "assignments": {
+          "assignments": [
+            {
+              "id": "status-field",
+              "name": "status",
+              "value": "OK",
+              "type": "string"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Set Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": true
+  },
+  "staticData": null,
+  "pinData": null,
+  "versionId": "f3257e57-fc7b-4c42-8554-ae0ae45ccac4",
+  "triggerCount": 0,
+  "meta": {
+    "aiBuilderAssisted": true,
+    "builderVariant": "mcp"
+  },
+  "parentFolderId": null,
+  "createdAt": "2026-09-18 12:48:41.892",
+  "updatedAt": "2026-09-18 12:48:41.892",
+  "isArchived": false,
+  "versionCounter": 1,
+  "description": "Ręczny trigger ustawiający pole status na OK.",
+  "activeVersionId": null,
+  "nodeGroups": [],
+  "sourceWorkflowId": null
+}

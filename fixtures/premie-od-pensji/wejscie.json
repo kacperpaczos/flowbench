@@ -1,0 +1,77 @@
+{
+  "_kontekst": {
+    "workflowId": "aEUUAnNsUr7LJIyr",
+    "nazwaN8n": "Premie 8% od pensji",
+    "dagRoboczy": "premie-od-pensji",
+    "wykonanie": 11,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-15 09:28:20.650",
+    "zakonczone": "2026-09-15 09:28:20.746",
+    "versionIdWykonania": "2a2d5435-eded-42e9-b78f-8be0bfafb1b3",
+    "versionIdBiezacy": "2a2d5435-eded-42e9-b78f-8be0bfafb1b3",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.4",
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "_zrodlo": {
+    "opis": "Proces nie przyjmuje danych z zewnatrz: wyzwalaczem jest manualTrigger, ktory produkuje jeden pusty element. Faktyczne wejscie dziedzinowe jest ZASZYTE w pierwszym wezle produkujacym dane i tutaj wypisane jawnie.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 11",
+    "sciezka": "resultData.runData[\"Dane pracownikow\"][0].data.main[0][*].json",
+    "gdzieZaszyteWDefinicji": "nodes[name='Dane pracownikow'].parameters.jsCode (literal w kodzie JS)"
+  },
+  "wyzwalacz": {
+    "wezel": "Start",
+    "typ": "n8n-nodes-base.manualTrigger",
+    "elementy": [
+      {}
+    ]
+  },
+  "wezelWejscia": {
+    "nazwa": "Dane pracownikow",
+    "typ": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "tryb": "runOnceForAllItems"
+  },
+  "deklaracjeTypowN8n": null,
+  "liczbaElementow": 3,
+  "elementy": [
+    {
+      "imie": "Anna Kowalska",
+      "stanowisko": "Analityk",
+      "pensja": 7200
+    },
+    {
+      "imie": "Piotr Nowak",
+      "stanowisko": "Developer",
+      "pensja": 11500
+    },
+    {
+      "imie": "Maria Wisniewska",
+      "stanowisko": "Kierownik",
+      "pensja": 15800
+    }
+  ],
+  "kopertyN8n": [
+    {
+      "item": 0
+    },
+    {
+      "item": 0
+    },
+    {
+      "item": 0
+    }
+  ],
+  "typy": {
+    "[]": "object",
+    "[].imie": "string",
+    "[].pensja": "integer",
+    "[].stanowisko": "string"
+  },
+  "precyzjaLiczb": {
+    "[].pensja": 0
+  }
+}

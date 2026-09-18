@@ -1,0 +1,62 @@
+{
+  "_kontekst": {
+    "workflowId": "ag3nCPjnADFqUADE",
+    "nazwaN8n": "Demo MCP - wartosc zamowienia",
+    "dagRoboczy": "demo-mcp-wartosc-zamowienia",
+    "wykonanie": 3,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-14 19:11:58.755",
+    "zakonczone": "2026-09-14 19:11:58.874",
+    "versionIdWykonania": "c0bbe46e-6439-4e23-99ec-1d84ffbfa3cd",
+    "versionIdBiezacy": "c0bbe46e-6439-4e23-99ec-1d84ffbfa3cd",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.2",
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "_zrodlo": {
+    "opis": "Wynik ostatniego wykonanego wezla, przepisany z migawki wykonania bez upraszczania: te same pola, ta sama kolejnosc, te same typy i ta sama precyzja liczb.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 3",
+    "sciezka": "resultData.runData[\"Policz wartosc brutto\"][0].data.main[0][*].json"
+  },
+  "ostatniWezel": {
+    "nazwa": "Policz wartosc brutto",
+    "typ": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "statusWezla": "success",
+    "czasWykonaniaMs": 76
+  },
+  "kolejnoscWezlow": [
+    "Start",
+    "Pozycja zamowienia",
+    "Policz wartosc brutto"
+  ],
+  "liczbaElementow": 1,
+  "elementy": [
+    {
+      "produkt": "Kabel HDMI 2.1",
+      "ilosc": 3,
+      "netto": 149.97,
+      "brutto": 184.46
+    }
+  ],
+  "kopertyN8n": [
+    {
+      "item": 0
+    }
+  ],
+  "typy": {
+    "[]": "object",
+    "[].brutto": "number",
+    "[].ilosc": "integer",
+    "[].netto": "number",
+    "[].produkt": "string"
+  },
+  "precyzjaLiczb": {
+    "[].brutto": 2,
+    "[].ilosc": 0,
+    "[].netto": 2
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "_kontekst": {
+    "workflowId": "gnzjOf2qHJoEPeGo",
+    "nazwaN8n": "Status OK",
+    "dagRoboczy": "status-ok",
+    "wykonanie": 12,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-18 12:48:44.085",
+    "zakonczone": "2026-09-18 12:48:44.116",
+    "versionIdWykonania": "f3257e57-fc7b-4c42-8554-ae0ae45ccac4",
+    "versionIdBiezacy": "f3257e57-fc7b-4c42-8554-ae0ae45ccac4",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.1",
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "_zrodlo": {
+    "opis": "Proces nie przyjmuje danych z zewnatrz: wyzwalaczem jest manualTrigger, ktory produkuje jeden pusty element. Faktyczne wejscie dziedzinowe jest ZASZYTE w pierwszym wezle produkujacym dane i tutaj wypisane jawnie.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 12",
+    "sciezka": "resultData.runData[\"Set Status\"][0].data.main[0][*].json",
+    "gdzieZaszyteWDefinicji": "nodes[name='Set Status'].parameters.assignments.assignments"
+  },
+  "wyzwalacz": {
+    "wezel": "Start",
+    "typ": "n8n-nodes-base.manualTrigger",
+    "elementy": [
+      {}
+    ]
+  },
+  "wezelWejscia": {
+    "nazwa": "Set Status",
+    "typ": "n8n-nodes-base.set",
+    "typeVersion": 3.4,
+    "tryb": "manual"
+  },
+  "deklaracjeTypowN8n": [
+    {
+      "pole": "status",
+      "typN8n": "string",
+      "wartoscZadeklarowana": "OK"
+    }
+  ],
+  "liczbaElementow": 1,
+  "elementy": [
+    {
+      "status": "OK"
+    }
+  ],
+  "kopertyN8n": [
+    {
+      "item": 0
+    }
+  ],
+  "typy": {
+    "[]": "object",
+    "[].status": "string"
+  },
+  "precyzjaLiczb": {}
+}

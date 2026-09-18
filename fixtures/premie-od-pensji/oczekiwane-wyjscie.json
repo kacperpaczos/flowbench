@@ -1,0 +1,131 @@
+{
+  "_kontekst": {
+    "workflowId": "aEUUAnNsUr7LJIyr",
+    "nazwaN8n": "Premie 8% od pensji",
+    "dagRoboczy": "premie-od-pensji",
+    "wykonanie": 11,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-15 09:28:20.650",
+    "zakonczone": "2026-09-15 09:28:20.746",
+    "versionIdWykonania": "2a2d5435-eded-42e9-b78f-8be0bfafb1b3",
+    "versionIdBiezacy": "2a2d5435-eded-42e9-b78f-8be0bfafb1b3",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.4",
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "_zrodlo": {
+    "opis": "Wynik ostatniego wykonanego wezla, przepisany z migawki wykonania bez upraszczania: te same pola, ta sama kolejnosc, te same typy i ta sama precyzja liczb.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 11",
+    "sciezka": "resultData.runData[\"Suma premii\"][0].data.main[0][*].json"
+  },
+  "ostatniWezel": {
+    "nazwa": "Suma premii",
+    "typ": "n8n-nodes-base.code",
+    "typeVersion": 2,
+    "statusWezla": "success",
+    "czasWykonaniaMs": 7
+  },
+  "kolejnoscWezlow": [
+    "Start",
+    "Dane pracownikow",
+    "Premia 8%",
+    "Dodatek 50 zl",
+    "Stawka podatku",
+    "Podatek dochodowy",
+    "Suma premii"
+  ],
+  "liczbaElementow": 1,
+  "elementy": [
+    {
+      "liczbaPracownikow": 3,
+      "sumaPensji": 34500,
+      "sumaPremii": 2760,
+      "sumaDodatkow": 150,
+      "sumaPremiiRazem": 2910,
+      "sumaPodatku": 10406,
+      "sumaNaDoReke": 27004,
+      "szczegoly": [
+        {
+          "imie": "Anna Kowalska",
+          "pensja": 7200,
+          "premia": 576,
+          "dodatek": 50,
+          "premiaRazem": 626,
+          "stawkaPodatku": 0.12,
+          "podatek": 939.12,
+          "naDoReke": 6886.88
+        },
+        {
+          "imie": "Piotr Nowak",
+          "pensja": 11500,
+          "premia": 920,
+          "dodatek": 50,
+          "premiaRazem": 970,
+          "stawkaPodatku": 0.32,
+          "podatek": 3990.4,
+          "naDoReke": 8479.6
+        },
+        {
+          "imie": "Maria Wisniewska",
+          "pensja": 15800,
+          "premia": 1264,
+          "dodatek": 50,
+          "premiaRazem": 1314,
+          "stawkaPodatku": 0.32,
+          "podatek": 5476.48,
+          "naDoReke": 11637.52
+        }
+      ]
+    }
+  ],
+  "kopertyN8n": [
+    {
+      "item": 0
+    }
+  ],
+  "typy": {
+    "[]": "object",
+    "[].liczbaPracownikow": "integer",
+    "[].sumaDodatkow": "integer",
+    "[].sumaNaDoReke": "integer",
+    "[].sumaPensji": "integer",
+    "[].sumaPodatku": "integer",
+    "[].sumaPremii": "integer",
+    "[].sumaPremiiRazem": "integer",
+    "[].szczegoly": "array",
+    "[].szczegoly[]": "object",
+    "[].szczegoly[].dodatek": "integer",
+    "[].szczegoly[].imie": "string",
+    "[].szczegoly[].naDoReke": "number",
+    "[].szczegoly[].pensja": "integer",
+    "[].szczegoly[].podatek": "number",
+    "[].szczegoly[].premia": "integer",
+    "[].szczegoly[].premiaRazem": "integer",
+    "[].szczegoly[].stawkaPodatku": "number"
+  },
+  "precyzjaLiczb": {
+    "[].liczbaPracownikow": 0,
+    "[].sumaDodatkow": 0,
+    "[].sumaNaDoReke": 0,
+    "[].sumaPensji": 0,
+    "[].sumaPodatku": 0,
+    "[].sumaPremii": 0,
+    "[].sumaPremiiRazem": 0,
+    "[].szczegoly[].dodatek": 0,
+    "[].szczegoly[].naDoReke": [
+      1,
+      2
+    ],
+    "[].szczegoly[].pensja": 0,
+    "[].szczegoly[].podatek": [
+      1,
+      2
+    ],
+    "[].szczegoly[].premia": 0,
+    "[].szczegoly[].premiaRazem": 0,
+    "[].szczegoly[].stawkaPodatku": 2
+  }
+}

@@ -1,0 +1,78 @@
+{
+  "_kontekst": {
+    "workflowId": "ag3nCPjnADFqUADE",
+    "nazwaN8n": "Demo MCP - wartosc zamowienia",
+    "dagRoboczy": "demo-mcp-wartosc-zamowienia",
+    "wykonanie": 3,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-14 19:11:58.755",
+    "zakonczone": "2026-09-14 19:11:58.874",
+    "versionIdWykonania": "c0bbe46e-6439-4e23-99ec-1d84ffbfa3cd",
+    "versionIdBiezacy": "c0bbe46e-6439-4e23-99ec-1d84ffbfa3cd",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.2",
+    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+  },
+  "_zrodlo": {
+    "opis": "Proces nie przyjmuje danych z zewnatrz: wyzwalaczem jest manualTrigger, ktory produkuje jeden pusty element. Faktyczne wejscie dziedzinowe jest ZASZYTE w pierwszym wezle produkujacym dane i tutaj wypisane jawnie.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 3",
+    "sciezka": "resultData.runData[\"Pozycja zamowienia\"][0].data.main[0][*].json",
+    "gdzieZaszyteWDefinicji": "nodes[name='Pozycja zamowienia'].parameters.assignments.assignments"
+  },
+  "wyzwalacz": {
+    "wezel": "Start",
+    "typ": "n8n-nodes-base.manualTrigger",
+    "elementy": [
+      {}
+    ]
+  },
+  "wezelWejscia": {
+    "nazwa": "Pozycja zamowienia",
+    "typ": "n8n-nodes-base.set",
+    "typeVersion": 3.4,
+    "tryb": "manual"
+  },
+  "deklaracjeTypowN8n": [
+    {
+      "pole": "produkt",
+      "typN8n": "string",
+      "wartoscZadeklarowana": "Kabel HDMI 2.1"
+    },
+    {
+      "pole": "cenaNetto",
+      "typN8n": "number",
+      "wartoscZadeklarowana": 49.99
+    },
+    {
+      "pole": "ilosc",
+      "typN8n": "number",
+      "wartoscZadeklarowana": 3
+    }
+  ],
+  "liczbaElementow": 1,
+  "elementy": [
+    {
+      "produkt": "Kabel HDMI 2.1",
+      "cenaNetto": 49.99,
+      "ilosc": 3
+    }
+  ],
+  "kopertyN8n": [
+    {
+      "item": 0
+    }
+  ],
+  "typy": {
+    "[]": "object",
+    "[].cenaNetto": "number",
+    "[].ilosc": "integer",
+    "[].produkt": "string"
+  },
+  "precyzjaLiczb": {
+    "[].cenaNetto": 2,
+    "[].ilosc": 0
+  }
+}
