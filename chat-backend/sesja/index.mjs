@@ -160,8 +160,11 @@ export function utworzBrameSesji(opcje = {}) {
     }
 
     if (sciezka === TRASA_WERYFIKACJI && (metoda === 'GET' || metoda === 'HEAD')) {
-      const wpis = znajdzSesje(req)
-      if (wpis) odpowiedz(res, 200, { ok: true })
+      // Ta sama trojca kodow co `sprawdz`: 403 obcy Origin, 401 brak sesji, 200 jest.
+      // Caddy przepisuje te odpowiedz klientowi, wiec operator widzi ten sam blad
+      // na /dagu/*, co na /api/*.
+      if (!originPasuje(req)) odpowiedz(res, 403, { error: 'zly origin zadania (CSRF)' })
+      else if (znajdzSesje(req)) odpowiedz(res, 200, { ok: true })
       else odpowiedz(res, 401, { error: 'wymagana sesja operatora — zaloguj sie' })
       return true
     }

@@ -93,9 +93,15 @@ w wolumenie `n8niframe_n8n_data`, którego Faza 1 nie tknęła.
 
 ### Czego wycofanie NIE cofa
 
-* **Wolumen `n8niframe_dagu_data`** zostaje na dysku z definicjami, historią i kluczami API
-  Dagu. To jest celowe — gdyby Fazę 1 wznowiono, nic nie przepada. Nie ma powodu go kasować,
-  a `docker volume rm` jest zakazane.
+* **Wolumeny Fazy 1** zostają na dysku. To jest celowe — gdyby Fazę 1 wznowiono, nic nie
+  przepada. Nie ma powodu ich kasować, a `docker volume rm` jest zakazane.
+
+  | Wolumen | Co trzyma |
+  | --- | --- |
+  | `n8niframe_dagu_data` | całe `/var/lib/dagu`: definicje, historia, logi, klucze API, `config.yaml` |
+  | `n8niframe_dagu_bazowy` | sam `base.yaml` — zapis dla silnika, odczyt dla warstwy polityki |
+  | `n8niframe_zezwolenia` | dziennik zezwoleń warstwy polityki (przeżywa `recreate` backendu) |
+  | `n8niframe_poswiadczenia` | jedna kopia `.credentials.json` z hosta |
 * **Klucze API Dagu** dalej istnieją wewnątrz tego wolumenu. Jeśli wycofanie jest trwałe,
   unieważnij je (§6.3) zanim porzucisz instancję.
 * **Kopia zapasowa** w `~/kopie-n8niframe/` zostaje. Patrz §4.

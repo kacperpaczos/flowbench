@@ -47,12 +47,39 @@ configs:
   dagu_config:
     content: |
       # Generowane przez Compose z .env - nie edytowac w kontenerze.
+      #
+      # Plik bazowy przeniesiony z domyslnego /var/lib/dagu/base.yaml na osobny
+      # wolumen. Powod: warstwa polityki (chat-backend/KONTRAKT.md par. 4.7) musi go
+      # CZYTAC, zeby zamknac droge obejscia przez akcje wlasne - a gdyby czytala go
+      # przez wolumen silnika, dostalaby przy okazji config.yaml z sekretem
+      # podpisujacym JWT. Osobny wolumen daje jej dokladnie jeden plik.
+      base_config: /var/lib/dagu/bazowy/base.yaml
       auth:
         mode: builtin
         builtin:
           token:
             secret: ${DAGU_AUTH_TOKEN_SECRET:?ustaw DAGU_AUTH_TOKEN_SECRET w .env}
             ttl: 24h
+
+  # Plik bazowy silnika musi ISTNIEC, zanim warstwa polityki sprobuje go przeczytac -
+  # Dagu sam go nie tworzy, a `readFile` na braku pliku rzuca. Zasiewamy go przez
+  # /etc/custom-init.d, czyli wlasny punkt rozszerzenia obrazu: /entrypoint.sh uruchamia
+  # stamtad kazdy wykonywalny skrypt ZANIM zejdzie do uzytkownika docelowego.
+  # Skrypt jest idempotentny - istniejacego pliku nie nadpisuje.
+  dagu_zasiew_bazowego:
+    content: |
+      #!/bin/sh
+      # $$ to ucieczka przed interpolacja Compose - w kontenerze zostaje pojedyncze $.
+      B=/var/lib/dagu/bazowy/base.yaml
+      mkdir -p "$$(dirname "$$B")"
+      if [ ! -f "$$B" ]; then
+        printf '%s\n' \
+          '# Plik bazowy Dagu. Wspolne ustawienia i akcje wlasne dla wszystkich DAG-ow.' \
+          '# Akcji z tego pliku NIE da sie przeslonic lokalnie (audyt walidacji par. 3.5),' \
+          '# dlatego warstwa polityki go czyta - montowany read-only jako /silnik/base.yaml.' \
+          '# Edycja: REST-em z rola admina. Pusty plik jest poprawny.' > "$$B"
+      fi
+      chmod 644 "$$B"
 
   # Prawdziwy token Dagu dla wariantu B2 (decyzja par. 5.2 R-B). Trzymany tak samo
   # jak sekrety silnika - plikiem, nie w `environment:` proxy - zeby nie wyciekal
@@ -90,6 +117,9 @@ services:
       - source: dagu_config
         target: /var/lib/dagu/config.yaml
         mode: 0400
+      - source: dagu_zasiew_bazowego
+        target: /etc/custom-init.d/10-plik-bazowy.sh
+        mode: 0755
     volumes:
       # JEDEN wolumen na cale /var/lib/dagu. Montowanie samych dags/ i data/ gubi
       # logi przy `recreate` - zmierzone w audycie [D19]: 25 katalogow z logami -> 2,
@@ -100,6 +130,9 @@ services:
       - ./dags:/var/lib/dagu/dags
       # Zatwierdzone kontrakty danych (wlasnosc T2). Silnik ma je tylko CZYTAC.
       - ./kontrakty:/var/lib/dagu/kontrakty:ro
+      # Plik bazowy silnika. Zapisywalny dla silnika (admin edytuje go REST-em),
+      # read-only dla chat-backend - patrz `base_config` wyzej.
+      - dagu_bazowy:/var/lib/dagu/bazowy
     expose:
       - "8080"                       # tylko w sieci compose; na host wychodzi przez proxy
     networks:
@@ -131,6 +164,10 @@ services:
       DAGU_MCP_TOKEN: ${DAGU_AGENT_TOKEN:?ustaw DAGU_AGENT_TOKEN w .env}
       KONTRAKTY_DIR: /app/kontrakty
       ZEZWOLENIA_PLIK: /app/dane/zezwolenia.json
+      # Plik bazowy silnika, TYLKO DO ODCZYTU. Warstwa polityki czyta z niego akcje
+      # wlasne (chat-backend/KONTRAKT.md par. 4.7); bez tego jedna droga obejscia
+      # zostaje otwarta.
+      DAGU_BASE_YAML: /silnik/base.yaml
       POLITYKA_MCP_PORT: "8788"
       # Brama sesji /api/* (R-A). Kontrakt: chat-backend/sesja/KONTRAKT.md.
       SESJA_HASLO: ${SESJA_HASLO:?ustaw SESJA_HASLO w .env}
@@ -146,6 +183,13 @@ services:
       - poswiadczenia:/seed:ro
       # Kontrakty T2 read-only; obraz ma wlasna kopie jako wartosc domyslna.
       - ./kontrakty:/app/kontrakty:ro
+      # Plik bazowy silnika - read-only i BEZ reszty wolumenu silnika.
+      - dagu_bazowy:/silnik:ro
+      # Dziennik zezwolen warstwy polityki. OSOBNY wolumen, swiadomie NIE wspoldzielony
+      # z wolumenem silnika: krok DAG-a biegnie jako root (par. 5.2 R-C) i gdyby mial
+      # tam zapis, podmienilby wlasne zezwolenie. Wolumen, a nie katalog w kontenerze,
+      # bo zezwolenia maja PRZEZYC `recreate` backendu (test T2).
+      - zezwolenia:/app/dane
     expose:
       - "8787"
     networks:
@@ -298,6 +342,8 @@ services:
 volumes:
   n8n_data:          # NIETYKALNY - pelna nazwa n8niframe_n8n_data
   dagu_data:         # cale /var/lib/dagu: definicje, historia, logi, klucze API
+  dagu_bazowy:       # sam base.yaml: zapis dla silnika, odczyt dla warstwy polityki
+  zezwolenia:        # dziennik zezwolen warstwy polityki (przezywa recreate)
   poswiadczenia:     # jeden plik: kopia .credentials.json z hosta
   caddy_data:
   caddy_config:

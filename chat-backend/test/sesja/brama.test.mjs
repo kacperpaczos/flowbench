@@ -176,6 +176,17 @@ test('weryfikacja (cel forward_auth): 401 bez sesji, 200 z sesja', async () => {
   assert.equal(z.kod, 200)
 })
 
+test('weryfikacja z obcym Origin: 403, nie 401', async () => {
+  const brama = utworzBrameSesji({ srodowisko: SRODOWISKO })
+  const { ciasteczko } = await zaloguj(brama)
+  const res = odpowiedz()
+  await brama.obsluz(zadanie({
+    metoda: 'GET', url: '/api/sesja/weryfikacja',
+    naglowki: { origin: 'http://evil.example', cookie: jakoCookie(ciasteczko) },
+  }), res)
+  assert.equal(res.kod, 403)
+})
+
 test('weryfikacja po wylogowaniu znow daje 401', async () => {
   const brama = utworzBrameSesji({ srodowisko: SRODOWISKO })
   const { ciasteczko } = await zaloguj(brama)
