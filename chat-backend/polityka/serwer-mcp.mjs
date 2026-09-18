@@ -15,6 +15,8 @@ import { opiszNaruszenia, BladTransportu } from './bledy.mjs'
 import { sprawdzDefinicje, wykryjPoddagi } from './walidacja-definicji.mjs'
 import { sprawdzIdentyfikator } from './identyfikatory.mjs'
 import { ustalWynik } from './wynik.mjs'
+import { kanoniczny, odcisk } from './kanonizacja.mjs'
+import { parsujDefinicje } from './struktura.mjs'
 
 const PROTOKOL = '2025-06-18'
 
@@ -105,7 +107,18 @@ const strukturalny = (dane, tekst) => ({
 /**
  * Buduje logikę serwera bez transportu - żeby dało się ją testować bez gniazda.
  */
-export function utworzBramke({ klient, rejestr, zezwolenia, plikBazowy = null, logger = null }) {
+export function utworzBramke({
+  klient, rejestr, zezwolenia, plikBazowy = null, odczytajPlikBazowy = null, logger = null,
+}) {
+  // Pliku bazowego silnika NIE da się odczytać przez MCP (`dagu_change`/`dagu_read` go nie
+  // znają), a niesie on akcje własne z kontraktami. Jeśli T1 poda funkcję odczytu - np.
+  // czytającą ten sam plik z wolumenu - bramka bierze pod uwagę jego AKTUALNĄ treść i wykrywa
+  // jego podmianę przy starcie. Bez niej ta droga zostaje otwarta i tak jest w raporcie.
+  async function biezacyPlikBazowy() {
+    if (typeof odczytajPlikBazowy !== 'function') return plikBazowy
+    try { return await odczytajPlikBazowy() } catch { return plikBazowy }
+  }
+
   /** Pobiera z silnika definicje sub-DAG-ów wołanych przez daną definicję (domknięcie). */
   async function pobierzPoddagi(yamlZrodlowy) {
     const poddagi = {}
@@ -145,8 +158,9 @@ export function utworzBramke({ klient, rejestr, zezwolenia, plikBazowy = null, l
       return tekstowy('Odmowa: pole "spec" musi zawierać pełną definicję YAML procesu.', true)
     }
 
+    const baza = await biezacyPlikBazowy()
     const poddagi = await pobierzPoddagi(spec)
-    const walidacja = sprawdzDefinicje({ nazwa, yaml: spec, rejestr, plikBazowy, poddagi })
+    const walidacja = sprawdzDefinicje({ nazwa, yaml: spec, rejestr, plikBazowy: baza, poddagi })
     if (!walidacja.ok) return odmowaNarzedzia(walidacja.naruszenia)
 
     if (tryb === 'preview') {
@@ -166,7 +180,9 @@ export function utworzBramke({ klient, rejestr, zezwolenia, plikBazowy = null, l
     // Inaczej zezwolenie opisywałoby tekst, którego nikt już nie wykona.
     const zSilnika = await klient.pobierzSpec(nazwa)
     const poddagiZSilnika = await pobierzPoddagi(zSilnika ?? spec)
-    const powtorna = sprawdzDefinicje({ nazwa, yaml: zSilnika ?? spec, rejestr, plikBazowy, poddagi: poddagiZSilnika })
+    const powtorna = sprawdzDefinicje({
+      nazwa, yaml: zSilnika ?? spec, rejestr, plikBazowy: baza, poddagi: poddagiZSilnika,
+    })
     if (!powtorna.ok) {
       return odmowaNarzedzia(powtorna.naruszenia,
         'Definicja zapisana w silniku nie przechodzi polityki, choć przesłana przechodziła. ' +
@@ -198,13 +214,31 @@ export function utworzBramke({ klient, rejestr, zezwolenia, plikBazowy = null, l
           'więc nie da się potwierdzić, że wykonana zostanie wersja zwalidowana.', true)
       }
       const poddagiZSilnika = await pobierzPoddagi(zSilnika)
+      const baza = await biezacyPlikBazowy()
       const kontrola = zezwolenia.sprawdzPrzedStartem({
         nazwa, yamlZSilnika: zSilnika, poddagiZSilnika, odciskRejestru: rejestr.odcisk,
+        odciskBazy: baza ? odcisk(kanoniczny(parsujDefinicje(baza).definicja ?? {})) : null,
       })
       if (!kontrola.ok) return odmowaNarzedzia(kontrola.naruszenia)
     }
 
-    const wykonanie = await klient.wykonaj({ targetType: 'dag', ...argumenty })
+    if (argumenty?.spec !== undefined || argumenty?.targetType !== undefined) {
+      return tekstowy(
+        'Odmowa: tej bramce nie podaje sie ani "spec", ani "targetType". Uruchamiamy wylacznie ' +
+        'zapisany proces po nazwie - wykonanie definicji podanej wprost (targetType=inline_spec) ' +
+        'omijaloby zapis, a razem z nim cala polityke kontraktu.', true)
+    }
+    // Lista dozwolonych argumentow, a nie przepisanie wszystkiego, co przyszlo.
+    const przepuszczane = ['name', 'action', 'dagRunId', 'params', 'stepName', 'queue',
+      'singleton', 'labels', 'includeDownstream', 'wait', 'waitTimeoutSeconds']
+    // retry i stop celuja w konkretny przebieg, start i enqueue w proces.
+    const doSilnika = {
+      targetType: (akcja === 'retry' || akcja === 'stop') && argumenty?.dagRunId ? 'run' : 'dag',
+    }
+    for (const pole of przepuszczane) {
+      if (argumenty?.[pole] !== undefined) doSilnika[pole] = argumenty[pole]
+    }
+    const wykonanie = await klient.wykonaj(doSilnika)
     const dane = klient.dane(wykonanie)
     return strukturalny(dane ?? {}, JSON.stringify(dane))
   }
@@ -286,9 +320,9 @@ export function utworzBramke({ klient, rejestr, zezwolenia, plikBazowy = null, l
  */
 export async function uruchomSerwerMcp({
   host = '127.0.0.1', port = 8788, sciezka = '/mcp', sekret = null,
-  klient, rejestr, zezwolenia, plikBazowy = null, logger = null,
+  klient, rejestr, zezwolenia, plikBazowy = null, odczytajPlikBazowy = null, logger = null,
 }) {
-  const bramka = utworzBramke({ klient, rejestr, zezwolenia, plikBazowy, logger })
+  const bramka = utworzBramke({ klient, rejestr, zezwolenia, plikBazowy, odczytajPlikBazowy, logger })
   const sesje = new Set()
 
   const serwer = createServer((req, res) => {

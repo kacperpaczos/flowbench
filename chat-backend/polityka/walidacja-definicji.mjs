@@ -15,7 +15,7 @@ import { naruszenie, odmowa, zgoda } from './bledy.mjs'
 import { odcisk, kanoniczny } from './kanonizacja.mjs'
 import { sprawdzIdentyfikator } from './identyfikatory.mjs'
 import {
-  parsujDefinicje, zbierzKroki, lancuchy, zaleznosciKroku, normalizujContinueOn,
+  parsujDefinicje, zbierzKroki, zbierzUchwyty, lancuchy, zaleznosciKroku, normalizujContinueOn,
 } from './struktura.mjs'
 
 const AKCJE_PODDAGA = new Set(['dag.run', 'dag.enqueue'])
@@ -267,8 +267,22 @@ export function sprawdzDefinicje({ nazwa, yaml, rejestr, plikBazowy = null, podd
         'naruszenie schematu. Ustaw continue_on na konkretnym kroku, który ma prawo zawieść.'))
     }
 
-    const zebrane = zbierzKroki(definicja.steps, `${prefiks}steps`)
-    if (zebrane.length === 0) {
+    // Przebieg z harmonogramu startuje w silniku, nie przez naszą bramkę - kontrola sumy
+    // kontrolnej nigdy się dla niego nie odpala. Dopóki nie ma na to osobnej decyzji,
+    // Faza 1 nie wpuszcza harmonogramów: inaczej obietnica "wykonywana wersja = wersja
+    // zwalidowana" byłaby nieprawdziwa dla każdego zaplanowanego uruchomienia.
+    if (definicja.schedule !== undefined) {
+      naruszenia.push(naruszenie('HARMONOGRAM_POZA_BRAMKA', `${prefiks}schedule`,
+        `Proces "${nazwaDaga}" ma harmonogram (schedule:). Uruchomienie z harmonogramu startuje ` +
+        'wewnątrz silnika i nie przechodzi przez kontrolę sumy kontrolnej, więc wykonałoby ' +
+        'definicję leżącą na dysku, także podmienioną. W Fazie 1 procesy uruchamiamy ręcznie.'))
+    }
+
+    const zebrane = [
+      ...zbierzKroki(definicja.steps, `${prefiks}steps`),
+      ...zbierzUchwyty(definicja.handler_on, `${prefiks}handler_on`),
+    ]
+    if (zebrane.filter((z) => z.wGrafie).length === 0) {
       naruszenia.push(naruszenie('DAG_BEZ_KROKOW', `${prefiks}steps`,
         `Proces "${nazwaDaga}" nie ma ani jednego kroku. Silnik przepuszcza taki DAG przez lint ` +
         'i kończy go jako succeeded - zielony przebieg, który niczego nie zrobił.'))

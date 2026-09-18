@@ -204,7 +204,12 @@ Zwraca:
    `continue_on: skipped` na gałęzi warunkowej — **dozwolone**, fan-in go wymaga [D13].
 8. Krok czytający cudzy wynik ma ten krok w `depends` (krawędź zależności = krawędź danych).
 9. To samo **po rozwinięciu**: `defaults:`, akcje własne z DAG-a i z pliku bazowego,
-   definicje sub-DAG-ów (`action: dag.run`, `call:`), ciała `foreach`.
+   definicje sub-DAG-ów (`action: dag.run`, `call:`), ciała `foreach`, kroki `handler_on`.
+10. Brak `schedule:` — **ograniczenie Fazy 1**. Przebieg z harmonogramu startuje wewnątrz
+    silnika, nie przez `process_run`, więc kontrola sumy kontrolnej (§4.4) nigdy się dla
+    niego nie odpala. Wpuszczenie harmonogramów wymaga osobnej decyzji operatora; do tego
+    czasu obietnica „wykonywana wersja = wersja zwalidowana" obowiązuje tylko dla
+    uruchomień ręcznych i to jest powiedziane wprost.
 
 Sprawdzanie działa na **sparsowanej strukturze**. Wyrażenia regularne stosujemy wyłącznie do
 treści pojedynczego polecenia powłoki (`run:`), bo to jest tekst z definicji, nie struktura.
@@ -275,6 +280,8 @@ import { uruchomSerwerMcp } from './polityka/index.mjs'
 const serwer = await uruchomSerwerMcp({
   host: '127.0.0.1', port: 8788,
   klient, rejestr, zezwolenia,
+  sekret: process.env.POLITYKA_MCP_SEKRET ?? null,   // opcjonalny Bearer na naszym MCP
+  odczytajPlikBazowy: async () => readFile('/var/lib/dagu/base.yaml', 'utf8'),  // opcjonalne, patrz niżej
   logger: console,
 })
 // serwer.url  -> 'http://127.0.0.1:8788/mcp'
@@ -289,6 +296,18 @@ Narzędzia widziane przez model (nazwy po angielsku, opisy po polsku):
 | `process_write` | `dagu_change` | **waliduje definicję**; przy odmowie nie woła silnika i zwraca kody + komunikat po polsku; przy zgodzie zapisuje i zatwierdza zezwolenie |
 | `process_run` | `dagu_execute` | **odczytuje spec z silnika i porównuje sumę kontrolną z zezwoleniem**; niezgodność → odmowa, brak `start` |
 | `process_status` | `dagu_read target=run` | zwraca `statusLabel` z silnika |
+
+**`process_run` nie przyjmuje `spec` ani `targetType`.** `targetType` ustala bramka
+(`dag`, a dla `retry`/`stop` z `dagRunId` — `run`), a do silnika idą wyłącznie pola z listy
+dozwolonych. Bez tego `dagu_execute targetType=inline_spec` pozwalałby wykonać definicję
+podaną wprost, **z pominięciem zapisu, a więc i całej polityki**.
+
+**`odczytajPlikBazowy`** (opcjonalne, `async () => string`). Pliku bazowego silnika nie da
+się odczytać przez MCP — `dagu_read` nie ma takiego celu — a niesie on akcje własne
+z kontraktami (forma A). Jeśli T1/T1a poda funkcję czytającą ten plik z wolumenu, bramka
+używa jego **aktualnej** treści przy walidacji i wykrywa jego podmianę przy starcie
+(`ZEZWOLENIE_SUMA`). Bez tej funkcji podmiana pliku bazowego **zostaje drogą otwartą** —
+jest to wypisane w raporcie T2 i nie udajemy inaczej.
 
 Konfiguracja dla `claude -p` — T3 generuje ją w `entrypoint.sh` **zamiast** dzisiejszego
 wpisu `n8n`:
@@ -380,6 +399,7 @@ Powiedziane wprost, bo `docs/audyt-dagu-bezpieczenstwo.md` P3 rozstrzygnął to 
 | `CONTINUE_ON_MASKUJE` | `continue_on.failure` albo `continue_on.mark_success` na kroku objętym kontraktem | §4.1a |
 | `CONTINUE_ON_DEFAULTS` | to samo ustawione globalnie w `defaults:` | §4.1a |
 | `SUBDAG_NIEZNANY` | `action: dag.run` na definicję, której polityka nie dostała do wglądu | §4.1a |
+| `HARMONOGRAM_POZA_BRAMKA` | definicja ma `schedule:` — przebieg z harmonogramu startuje w silniku i omija kontrolę sumy kontrolnej | §13.3 S7 |
 | `ZEZWOLENIE_BRAK` | start procesu, który nigdy nie przeszedł polityki | §13.3 S7 |
 | `ZEZWOLENIE_SUMA` | definicja w silniku różni się od zwalidowanej | §13.3 S7 |
 | `ZEZWOLENIE_REJESTR` | zmienił się rejestr kontraktów od czasu zatwierdzenia | §13.3 S7 |
@@ -387,3 +407,20 @@ Powiedziane wprost, bo `docs/audyt-dagu-bezpieczenstwo.md` P3 rozstrzygnął to 
 | `WYNIK_NIEZNANY` | brak `dagRunId` albo silnik nie zna przebiegu | §4.3 |
 
 Kody są stabilne. Komunikat po polsku może się zmieniać; kod — nie.
+
+---
+
+## 8. Testy
+
+```sh
+# testy jednostkowe (bez stanowiska)
+node --test 'chat-backend/test/polityka/*.test.mjs'
+
+# z testami wobec żywego Dagu
+DAGU_POLITYKA_URL=http://127.0.0.1:9210/dagu/mcp \
+DAGU_POLITYKA_KLUCZ=<klucz developer/mcp> \
+DAGU_POLITYKA_KLUCZ_ADMIN=<klucz admin/rest, tylko do testu edycji przez UI> \
+node --test 'chat-backend/test/polityka/*.test.mjs'
+```
+
+Bez zmiennych środowiskowych testy integracyjne się **pomijają**, a reszta przechodzi.

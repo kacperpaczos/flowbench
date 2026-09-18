@@ -78,6 +78,28 @@ export function zbierzKroki(steps, sciezka = 'steps') {
   return wynik.map((w, i) => ({ ...w, nazwa: w.nazwa ?? `#${i + 1}` }))
 }
 
+/**
+ * Kroki obsługi cyklu życia (`handler_on.success/failure/cancel/exit`). To są normalne
+ * kroki z poleceniem powłoki, więc zakaz drugiego kanału i kontrakt obowiązują je tak samo,
+ * ale w grafie zależności nie uczestniczą.
+ */
+export function zbierzUchwyty(handlerOn, sciezka = 'handler_on') {
+  if (!handlerOn || typeof handlerOn !== 'object' || Array.isArray(handlerOn)) return []
+  const wynik = []
+  for (const zdarzenie of Object.keys(handlerOn)) {
+    const krok = handlerOn[zdarzenie]
+    if (!krok || typeof krok !== 'object' || Array.isArray(krok)) continue
+    wynik.push({
+      krok,
+      sciezka: `${sciezka}.${zdarzenie}`,
+      nazwa: krok.name ?? krok.id ?? `handler_on.${zdarzenie}`,
+      wGrafie: false,
+      skrot: false,
+    })
+  }
+  return wynik
+}
+
 /** Wszystkie łańcuchy znaków w strukturze, ze ścieżką - podstawa kontroli K5. */
 export function* lancuchy(wartosc, sciezka = '') {
   if (typeof wartosc === 'string') { yield { tekst: wartosc, sciezka }; return }
