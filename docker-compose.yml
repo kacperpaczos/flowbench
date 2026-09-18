@@ -1,0 +1,88 @@
+# Prototyp: React + edytor n8n w iframe.
+# Wszystko chodzi na jednym originie http://localhost:8080 (proxy), dzieki czemu
+# ciasteczko sesji n8n (SameSite=Lax) i CSP frame-ancestors 'self' dzialaja po HTTP.
+services:
+  n8n:
+    image: n8nio/n8n:2.38.7          # aktualny tag "stable" na Docker Hub (2026-09-14)
+    container_name: n8niframe-n8n
+    restart: unless-stopped
+    environment:
+      # --- adresacja za reverse proxy ---
+      N8N_HOST: localhost
+      N8N_PORT: "5678"
+      N8N_PROTOCOL: http
+      N8N_PATH: /n8n/                # n8n serwuje sie pod podsciezka
+      N8N_EDITOR_BASE_URL: http://localhost:8080/n8n/
+      WEBHOOK_URL: http://localhost:8080/n8n/
+      N8N_PROXY_HOPS: "1"            # jeden reverse proxy (Caddy) przed n8n
+      # --- osadzanie w iframe: tylko ta sama aplikacja (ten sam origin) ---
+      N8N_CONTENT_SECURITY_POLICY: '{"frame-ancestors":["''self''"]}'
+      # --- ciasteczka: HTTP lokalnie, ten sam origin co aplikacja ---
+      N8N_SECURE_COOKIE: "false"
+      N8N_SAMESITE_COOKIE: lax
+      # --- konto wlasciciela zakladane automatycznie przy starcie ---
+      # Od n8n 2.17.0. MANAGED_BY_ENV=true sprawia, ze n8n stosuje te wartosci
+      # przy kazdym starcie i blokuje edycje tego uzytkownika w UI.
+      # Hash bcrypt hasla "Admin123" ($$ to ucieczka przed interpolacja Compose).
+      N8N_INSTANCE_OWNER_MANAGED_BY_ENV: "true"
+      N8N_INSTANCE_OWNER_EMAIL: admin@admin.com
+      N8N_INSTANCE_OWNER_FIRST_NAME: Admin
+      N8N_INSTANCE_OWNER_LAST_NAME: Local
+      N8N_INSTANCE_OWNER_PASSWORD_HASH: "$$2b$$10$$JcvrSMfg19oTwS8QCkyS9eAbcJB4FzWuDRGOTTBP7FcVuVCtJBys."
+      # --- dostep MCP na poziomie instancji (od n8n 2.20.0) ---
+      N8N_MCP_MANAGED_BY_ENV: "true"
+      N8N_MCP_ACCESS_ENABLED: "true"
+      # --- reszta ---
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_VERSION_NOTIFICATIONS_ENABLED: "false"
+      N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS: "true"
+      GENERIC_TIMEZONE: Europe/Warsaw
+      TZ: Europe/Warsaw
+    volumes:
+      - n8n_data:/home/node/.n8n     # trwale dane: baza SQLite + klucz szyfrowania
+    expose:
+      - "5678"                       # tylko w sieci compose, bez publikacji na host
+
+  frontend:
+    build: ./frontend
+    container_name: n8niframe-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+
+  chat-backend:
+    build: ./chat-backend
+    container_name: n8niframe-chat
+    restart: unless-stopped
+    environment:
+      N8N_MCP_URL: http://proxy/n8n/mcp-server/http
+      N8N_MCP_TOKEN: ${N8N_MCP_TOKEN:?ustaw N8N_MCP_TOKEN w pliku .env}
+    volumes:
+      # Poswiadczenia Claude Code, read-only. Entrypoint kopiuje je do zapisywalnego
+      # miejsca w kontenerze, wiec odswiezenie tokenu nie rusza pliku na hoscie.
+      - ${HOME}/.claude/.credentials.json:/seed/.credentials.json:ro
+    expose:
+      - "8787"
+    depends_on:
+      - n8n
+
+  proxy:
+    image: caddy:2.10-alpine
+    container_name: n8niframe-proxy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"          # tylko lokalnie, bez wystawiania na swiat
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - n8n
+      - frontend
+      - chat-backend
+
+volumes:
+  n8n_data:
+  caddy_data:
+  caddy_config:

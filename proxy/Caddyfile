@@ -1,0 +1,41 @@
+{
+	admin off
+	auto_https off
+}
+
+:80 {
+	log {
+		output stdout
+		format console
+	}
+
+	# --- Edytor n8n pod /n8n/ ---
+	#
+	# Uwaga na zachowanie n8n 2.38.7: N8N_PATH=/n8n/ przepisuje wylacznie adresy
+	# w index.html i ustawia window.BASE_PATH='/n8n/', ale serwer nadal rejestruje
+	# wszystkie trasy w korzeniu (/assets, /static, /rest, /favicon.ico...).
+	# Sprawdzone bezposrednio na kontenerze:
+	#   GET n8n:5678/assets/index-*.js      -> 200 text/javascript
+	#   GET n8n:5678/n8n/assets/index-*.js  -> 200 text/html  (fallback SPA)
+	# Dlatego uzywamy handle_path, ktore ODCINA prefiks /n8n przed przekazaniem
+	# zadania. Przegladarka prosi o /n8n/assets/x.js, n8n dostaje /assets/x.js.
+	#
+	# reverse_proxy w Caddy przepuszcza WebSocket (push n8n na /rest/push) bez
+	# dodatkowej konfiguracji.
+	handle_path /n8n/* {
+		reverse_proxy n8n:5678
+	}
+
+	# Wygodne przekierowanie /n8n -> /n8n/
+	redir /n8n /n8n/ permanent
+
+	# Backend czatu: model (Claude Code headless) z narzedziami MCP n8n.
+	handle /api/* {
+		reverse_proxy chat-backend:8787
+	}
+
+	# Wszystko inne: aplikacja React (prototyp).
+	handle {
+		reverse_proxy frontend:80
+	}
+}

@@ -1,0 +1,25 @@
+# --- sekrety: nigdy do repozytorium ---
+.env
+.env.*
+!.env.example
+*.credentials.json
+.credentials*
+**/mcp.json
+secrets/
+*.pem
+*.key
+
+# --- migawki bazy n8n: dane, nie kod; rozliczane manifestem poza repo ---
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite3
+snapshots/
+
+# --- artefakty budowania i zaleznosci ---
+node_modules
+dist
+.cache
+
+# --- katalogi robocze silnika (stan wykonan, nie definicje) ---
+dagu-data/
