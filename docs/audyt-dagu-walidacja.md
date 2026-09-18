@@ -450,25 +450,44 @@ Error: failed to load DAG from t-action-badinput: … field 'with':
 
 To samo dotyczy akcji wbudowanych (`with.method is required` dla `http.request`, §3.1).
 
-### 3.3 `preconditions` na zawartości wyniku — **NIE jest walidacją**
+### 3.3 `preconditions` na zawartości wyniku — **NIE są walidacją**, i nie robią tego, co tu napisałem pierwotnie
 
-`preconditions` potrafią sięgnąć do treści wyniku: pole `eval` wykonuje podstawienie
-komend, więc `jq` na wyniku poprzedniego kroku działa. Ale efektem niespełnionego warunku
-jest **`skipped`, nie `failed`** — i DAG kończy się na zielono:
+> **Poprawka z 2026-09-18, po wdrożeniu.** Pierwsza wersja tej sekcji twierdziła, że „pole
+> `eval` wykonuje podstawienie komend, więc `jq` na wyniku poprzedniego kroku działa".
+> **To jest nieprawda.** `${RESULT}` **nie jest podstawiane** w `eval`, więc pokazany niżej
+> przebieg nie dowodził, że warunek odczytał dane — dowodził tylko, że warunek nigdy nie
+> pasował. Wniosek sekcji (niespełniony warunek → `skipped`, DAG zielony) pozostaje w mocy,
+> ale stał na złym uzasadnieniu. Błąd wykryty niezależnie przez dwa zadania wdrożeniowe
+> i potwierdzony ponownym pomiarem; poniżej właściwy obraz.
 
-```yaml
-name: t-precond
-steps:
-  - id: produce
-    run: echo '{"order_id":"A-1","total":"NIE-LICZBA"}'
-    output: RESULT
-  - id: gate
-    depends: [produce]
-    preconditions:
-      - eval: "echo '${RESULT}' | jq -r 'if (.total|type)==\"number\" then \"ok\" else \"bad\" end'"
-        expected: "ok"
-    run: echo "przepuszczone"
+**Co naprawdę robią `preconditions`** — zmierzone na przypiętej wersji:
+
+| Forma | Widzi wartość z `output:` | Uruchamia powłokę | Uwaga |
+| --- | --- | --- | --- |
+| `condition: "${NAZWA}"` + `expected: "re:…"` | **tak** | **nie** | porównanie wzorcem na tekście dokumentu |
+| `eval: "… ${NAZWA} …"` | **nie** | tak | warunek nigdy nie pasuje — to jest przypadek z pierwotnej wersji tej sekcji |
+| dowolna forma z `${steps.*.outputs.*}` | tak | tak | **wkleja dane do polecenia i wykonuje je** |
+
+Dowód na `condition` — ta sama bramka, dwie gałęzie, rozróżnia poprawnie:
+
 ```
+bramka:      {"galaz":"tak","inna":"nie"}   (output: BRAMKA + output_schema z enum)
+pasuje:      condition ${BRAMKA}  expected re:"galaz":"tak"   -> succeeded
+nie_pasuje:  condition ${BRAMKA}  expected re:"galaz":"nie"   -> skipped
+```
+
+Dowód na wektor wstrzyknięcia przez **stary** kanał — `$(id -u)` **wykonane z zawartości danych**:
+
+```
+produce:  DANE=zaczynam $(id -u) koniec      (DAGU_OUTPUT_FILE + outputs:)
+warunek:  eval "echo '${steps.produce.outputs.DANE}'"  expected: re:zaczynam 0 koniec
+          -> krok URUCHOMIONY   (komenda z danych wykonana)
+warunek:  ten sam, expected: re:zaczynam \$\(id -u\) koniec
+          -> skipped            (literal NIE zachowany)
+```
+
+**Sedno pozostaje bez zmian:** niespełniony warunek daje krok `skipped`, a DAG kończy się
+`succeeded` — nikt nie dostaje alertu:
 
 ```
 $ docker exec dagu-schema dagu start t-precond
@@ -478,8 +497,10 @@ time=… level=INFO msg="DAG run finished" dag=t-precond … status=succeeded
 Result: Succeeded
 ```
 
-Krok się nie wykonał, nikt nie dostał alertu, przebieg jest zielony. Jako bramka logiczna —
-tak. Jako egzekwowanie kontraktu — nie.
+Jako bramka logiczna — tak, i to jedyny sposób na rozgałęzienie warunkowe. Jako egzekwowanie
+kontraktu — nie. Bezpieczny wzorzec rozgałęzienia (dokument bramkowy o zamkniętym słowniku,
+`condition` zamiast `eval`, zakaz `${steps.*.outputs.*}`) opisuje
+`docs/decyzja-architektoniczna.md` §4.1b.
 
 ### 3.4 Czy da się narzucić `output_schema` globalnie? Nie
 

@@ -1,6 +1,6 @@
 # Decyzja architektoniczna: n8n → Dagu w prototypie
 
-Data: 2026-09-18. **Wersja 3.** Faza 1 z dwóch. Podstawa: `docs/audyt-dagu.md`,
+Data: 2026-09-18. **Wersja 3.1.** Faza 1 z dwóch. Podstawa: `docs/audyt-dagu.md`,
 `docs/baseline-prototypu.md` (18 scenariuszy regresji), `docs/audyt-dagu-walidacja.md`
 (werdykt `NATYWNE-CZESCIOWO`), `docs/rejestr-workflow.md` (15 obiektów rozliczonych)
 oraz `docs/audyt-dagu-bezpieczenstwo.md`.
@@ -188,6 +188,82 @@ akcji zamiast zwykłego `run:`. Wymuszenie użycia należy do warstwy polityki.
 **Prompt systemowy** nadal opisuje konwencję, żeby model trafiał za pierwszym razem.
 **Nie jest środkiem kontroli** i nie wolno go w raporcie odbiorczym jako taki przedstawiać.
 
+### 4.1b Uzupełnienia kontraktu z pomiarów implementacji (wersja 3.1)
+
+Trzy rzeczy, których wersja 3 nie wiedziała, bo ujawniły się dopiero przy pisaniu prawdziwych
+procesów. Wszystkie potwierdzone wykonaniem.
+
+**K7 — `preconditions` i dane.** Rozgałęzienie warunkowe jest wymagane przez §10, ale
+`preconditions` zachowują się inaczej niż reszta kontraktu i mają **otwarty wektor, który K4
+zamknął**. Zmierzone na przypiętej wersji:
+
+| Forma | Czy widzi wartość z kanału K4 (`output:`) | Czy uruchamia powłokę | Werdykt |
+| --- | --- | --- | --- |
+| `condition: "${NAZWA}"` + `expected: "re:…"` | **tak** — podstawia tekst dokumentu | **nie** — porównanie wzorcem | **jedyna dozwolona** |
+| `eval: "… ${NAZWA} …"` | **nie** — nie jest podstawiane, warunek nigdy nie pasuje | tak | **zakazana** |
+| cokolwiek z `${steps.*.outputs.*}` | tak — wkleja tekst do polecenia | tak | **zakazana bezwzględnie** |
+
+Dowód dla ostatniego wiersza — dane wyprodukowane starym kanałem, `$(id -u)` **wykonane**
+z zawartości danych:
+
+```
+produce:  DANE=zaczynam $(id -u) koniec        (przez DAGU_OUTPUT_FILE + outputs:)
+warunek:  eval "echo '${steps.produce.outputs.DANE}'"  expected: re:zaczynam 0 koniec
+wynik:    krok URUCHOMIONY  ->  podstawienie wykonalo komende z danych
+warunek:  ten sam, expected: re:zaczynam \$\(id -u\) koniec
+wynik:    skipped           ->  literal NIE zostal zachowany
+```
+
+Dlatego **K5 rozciąga się na `preconditions`**: zakaz `${steps.*.outputs.*}` obowiązuje
+tam tak samo jak w `run:`, a `eval` na danych jest zakazany.
+
+**Wzorzec rozgałęzienia — dokument bramkowy o zamkniętym słowniku.** Skoro `condition:`
+porównuje tekst, to do porównania nie może trafić ani jeden znak pochodzący z danych.
+Obowiązujący wzorzec: osobny krok liczy z danych **dokument bramkowy**, którego wszystkie
+wartości pochodzą z zamkniętego zbioru wymuszonego `enum` w `output_schema`; gałęzie
+porównują `condition` z tym dokumentem, a dane jadą do nich osobno, kanałem K4.
+
+```yaml
+- id: bramka_galezi
+  run: "$SKRYPTY/bramka.sh"          # z danych liczy {"galazPowyzej":"tak"|"nie", …}
+  output: BRAMKA
+  output_schema:
+    type: object
+    additionalProperties: false
+    required: [galazPowyzej, galazPonizej]
+    properties:
+      galazPowyzej: {type: string, enum: ["tak", "nie"]}
+      galazPonizej: {type: string, enum: ["tak", "nie"]}
+
+- id: podatek_wysoki
+  depends: [rozdziel_progiem, bramka_galezi]
+  preconditions:
+    - condition: "${BRAMKA}"
+      expected: 're:"galazPowyzej":"tak"'
+  continue_on: {skipped: true}        # WYMAGANE na OBU gałęziach, inaczej fan-in nie zbiegnie
+```
+
+Zmierzone: `condition` podstawia wartość z kanału K4 i **rozróżnia** — gałąź z pasującym
+wzorcem `succeeded`, gałąź z niepasującym `skipped`.
+
+**K6 — realny sufit kanału to 128 KiB, nie 1 MiB.** L5 (§7.2) mówi o `max_output_size`
+1 MiB i to prawda dla *silnika*, ale kanał K1–K4 przenosi wartość **zmienną środowiskową**,
+więc ogranicza go `MAX_ARG_STRLEN` jądra. Zmierzone: **126 684 B przechodzi, 131 884 B nie**,
+czyli próg to 131 072 B (128 KiB).
+
+Gorsze od samego limitu jest **to, jak pęka**: krok *produkujący* kończy się na zielono,
+a czerwony jest *odbiorca*, który nic złego nie zrobił. Dlatego próg przejścia na artefakt
+i manifest (K6) jest w polityce **liczbowy i niższy** niż limit silnika, a nie „gdy się nie
+zmieści".
+
+**Identyfikator kroku ma własny, węższy zbiór znaków.** Nazwa DAG-a to `^[a-z0-9][a-z0-9-]{0,38}$`
+(§4.2), ale `id` kroku musi pasować do `^[a-zA-Z][a-zA-Z0-9_]*$` — **bez myślnika**.
+Stąd `dane_pracownikow`, nie `dane-pracownikow`. Rejestr §4 tego nie wiedział.
+
+**Czego nie ma w obrazie.** Przypięty obraz ma `jq` 1.7, ale **nie ma `node` ani `python3`**.
+Węzły `code` z n8n (JavaScript) nie zostały przeniesione — zostały **przepisane na `jq`**.
+To jest zmiana implementacji przy zachowanym zachowaniu, i tak ma być raportowana.
+
 ### 4.2 Identyfikatory
 
 Rozdzielamy dwie rzeczy, które w n8n były rozdzielone same z siebie (`id` nieprzezroczysty,
@@ -323,6 +399,100 @@ konfiguracyjnego.
 > **otwarte**, a nie zamknięte. Jeśli środek okaże się pozorny, wracam do operatora
 > z wariantami, które operator odrzucił wcześniej (executor kontenerowy, osobna instancja)
 > albo ze stwierdzeniem, że w Community nie da się tego domknąć.
+
+### 5.2 Werdykty badania i decyzje operatora (wersja 3.1)
+
+`docs/audyt-dagu-bezpieczenstwo.md` rozstrzygnął wszystkie trzy ryzyka wykonaniem.
+Dwa są domknięte, jedno **nie da się domknąć** i zostało przyjęte świadomie.
+
+| Ryzyko | Werdykt badania | Decyzja operatora 2026-09-18 |
+| --- | --- | --- |
+| **R-A** — brak sesji `/api/chat` | mechanizm działa: ciasteczko `HttpOnly; SameSite=Strict`, serwerowa unieważnialność, kontrola `Origin`; dowody 401 bez sesji / 200 z sesją / 403 obcy Origin / 401 po wylogowaniu | **wdrożyć** (T1) |
+| **R-B** — token silnika w przeglądarce | `B2-WYKONALNE-Z-ZASTRZEŻENIEM`: samo wstrzyknięcie nagłówka nie przechodzi route-guarda SPA; działa sentinel w `localStorage` + podmiana nagłówka na Caddy, dowód z headless Chrome | **B2** — zmiana wcześniejszego wyboru B1 |
+| **R-C** — krok DAG-a wobec sekretów i reguł | `IZOLACJA-POZORNA`: krok biegnie jako **root** w kontenerze silnika, czyta `config.yaml`, zdobywa materiał do podrobienia tokenu admina (P1); nadpisuje `base.yaml` i `dags/`, podkłada wykonywalny DAG (P3); ma **otwarty egress** do internetu (P2) | **ryzyko przyjęte + utwardzenie sieci** |
+
+#### R-C: co dokładnie zostało przyjęte, a co domknięte
+
+**Przyjęte świadomie.** W wersji Community Dagu **nie da się** doprowadzić do stanu „krok
+nie tknie sekretu silnika". Pole `user:` na kroku nie istnieje, `env:` jest addytywne i nie
+odcina dziedziczenia, jedyna natywna izolacja to executor kontenerowy — a ten wymaga socketu
+Dockera, którego świadomie nie montujemy. Operator przyjmuje, że **agent jest faktycznie
+administratorem swojej instancji Dagu.**
+
+Model zagrożeń Fazy 1 jest wypowiedziany wprost: **napastnikiem jest model, który się myli,
+nie model, który atakuje.** Prototyp jest jednoosobowy, wyłącznie na `127.0.0.1`, za sesją
+z R-A. Przy takim modelu przyjęcie R-C jest proporcjonalne. Przy dwóch operatorach albo przy
+wystawieniu poza pętlę lokalną **przestaje być** — i wtedy wraca decyzja o rozdzieleniu
+instancji (piaskownica agenta + instancja wykonawcza z promocją definicji z Gita) albo
+o innym silniku. To jest warunek brzegowy Fazy 2, zapisany, nie zapomniany.
+
+**Domknięte mimo wszystko — dwie rzeczy, które kosztują prawie nic:**
+
+1. **Egress kroku do internetu.** Dziś otwarty (`example.com → 200`), czyli gotowa droga
+   eksfiltracji odczytanego sekretu. Sieć silnika dostaje `internal: true`.
+2. **Ruch boczny po nazwie DNS.** Dziś krok dosięga każdą usługę w sieci compose (`peer:80 → 200`),
+   czyli `n8n` i `chat-backend`. Sieci zostają rozdzielone.
+
+```yaml
+networks:
+  wewnetrzna:          # bez wyjscia na zewnatrz
+    internal: true
+  wyjsciowa: {}        # tylko dla chat-backend, ktory wola API modelu
+
+services:
+  dagu:         { networks: [wewnetrzna] }
+  n8n:          { networks: [wewnetrzna] }          # profil rollbacku
+  proxy:        { networks: [wewnetrzna] }
+  chat-backend: { networks: [wewnetrzna, wyjsciowa] }
+```
+
+Pozostaje nieosiągalne dla kroku i **to jest realna granica, potwierdzona pomiarem**:
+usługi hosta na `127.0.0.1` (rootless Docker nie routuje bramy do loopbacku hosta) oraz host
+przez socket Dockera (niemontowany).
+
+#### R-B: B2 i jego cena
+
+Przeglądarka trzyma **sentinel bez wartości**; prawdziwy JWT żyje wyłącznie w konfiguracji
+Caddy. XSS w naszej aplikacji nie ma czego wykraść, a strumień SSE — który niesie token
+w URL, więc w B1 wyciekałby do logów proxy, historii i referrera — niesie sentinel.
+
+Cena, zapisana bez upiększania:
+
+* **wylogowanie nie unieważnia serwerowo** — czyści tylko sentinel; rotacja = wymiana tokenu
+  w konfiguracji Caddy;
+* **proxy nadaje wszystkim jedną, wspólną tożsamość** — brak tożsamości per-osoba (Community
+  i tak nie ma wielu kont, L1);
+* **sesja z R-A staje się konieczna, nie opcjonalna** — skoro proxy samo dokłada tożsamość
+  Dagu, każdy, kto dosięgnie originu, dostaje UI. Origin musi być chroniony sesją.
+
+#### Klucz agenta: minimalna rola
+
+Klucz, którym model rozmawia z Dagu, ma rolę **`developer`** i `allowedSurfaces: ["mcp"]`.
+Zmierzone: `viewer` nie tworzy DAG-ów, `operator` dostaje `Insufficient permissions` na
+`dagu_change`, `developer` wystarcza do `dagu_read` + `dagu_change` + `dagu_execute`.
+Powierzchnia `mcp` odcina **całe** REST (403), więc klucz nie tknie kluczy API, użytkowników
+ani pliku bazowego.
+
+Zastrzeżenie, które trzeba wypowiedzieć: to zawęża **płaszczyznę sterowania**, nie płaszczyznę
+danych. Wykonany krok i tak jest rootem (P1, P3). Zawężenie klucza jest warstwą, nie granicą.
+
+Ograniczenie Community: **maksymalnie 2 klucze API**. Nie da się mieć naraz klucza admina
+operatora, osobnego klucza agenta i zapasowego.
+
+#### Operator w UI jest poza bramką — i tak ma być
+
+Warstwa polityki (§4.1a) stoi na ścieżce **modelu**. Operator, który edytuje YAML w Monaco
+albo klika Start w UI Dagu, **omija ją** — i to nie jest wada do naprawienia:
+
+* bramka pilnuje **poprawności wobec pomyłek modelu**, a nie działań człowieka, który
+  świadomie edytuje proces;
+* odebranie operatorowi edycji w Monaco byłoby regresją wobec A1 (§7.2), gdzie zapisano
+  wprost, że operator edytuje YAML w Monaco albo prosi czat;
+* R-C i tak jest przyjęte, więc traktowanie bramki jako granicy bezpieczeństwa byłoby
+  udawaniem.
+
+**Warstwa polityki jest narzędziem poprawności danych, nie mechanizmem bezpieczeństwa.**
+Tak ma być nazywana w raporcie odbiorczym i w `chat-backend/KONTRAKT.md`.
 
 ### Środki niezależne od powyższych
 
