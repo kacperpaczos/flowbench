@@ -9,27 +9,110 @@
 		format console
 	}
 
-	# --- Edytor n8n pod /n8n/ ---
+	# =========================================================================
+	# WARIANT B2 (decyzja par. 5.2 R-B, audyt bezpieczenstwa par. P4)
+	# =========================================================================
+	#
+	# Prawdziwy token Dagu zyje WYLACZNIE tutaj, w konfiguracji proxy. Przegladarka
+	# dostaje nie-sekretny sentinel. Dzieki temu XSS w naszej aplikacji nie ma czego
+	# wykrasc, a strumien SSE - ktory niesie token w URL, wiec w wariancie B1
+	# wyciekalby do logow proxy, historii i referrera - niesie sentinel.
+	#
+	# Cena, zapisana bez upiekszania (decyzja par. 5.2):
+	#   * wylogowanie NIE unieważnia serwerowo - czysci tylko sentinel; rotacja
+	#     tokenu = wymiana DAGU_PROXY_TOKEN w .env i `docker compose up -d proxy`;
+	#   * proxy nadaje wszystkim jedna, wspolna tozsamosc admina Dagu;
+	#   * dlatego brama sesji /api/* (R-A) jest KONIECZNA, nie opcjonalna - kazdy,
+	#     kto dosiegnie tego originu, dostaje UI admina.
+
+	# --- 0. CALY /dagu/* ZA BRAMA SESJI (R-A + B2 razem) ----------------------
+	#
+	# To jest domkniecie zastrzezenia 5 z audytu P4 i zdania z decyzji par. 5.2:
+	# skoro proxy samo dokłada tozsamosc admina Dagu, KAZDY, kto dosiegnie originu,
+	# dostalby UI admina. `forward_auth` pyta nasz backend o sesje operatora, zanim
+	# cokolwiek trafi do silnika. Bez sesji: 401, i zaden token nie jest wstrzykiwany.
+	#
+	# Dwie warstwy i obie sa potrzebne, sprawdzone `caddy adapt`:
+	#   * zewnetrzne `handle /dagu*` — zeby ta galaz wygrala z koncowym `handle {}`
+	#     (aplikacja React). Samo `route /dagu*` NIE wystarcza: Caddy sortuje
+	#     dyrektywy wlasna kolejnoscia i wstawia `route` PO grupie `handle`, wiec
+	#     catch-all przejmowal /dagu/* i oddawal SPA aplikacji zamiast Dagu.
+	#   * wewnetrzne `route` — zeby wymusic KOLEJNOSC: najpierw sesja, potem Dagu.
+	handle /dagu* {
+	 route {
+		forward_auth chat-backend:8787 {
+			uri /api/sesja/weryfikacja
+			# Ciasteczko sesji ma Path=/, wiec przegladarka wysyla je takze
+			# przy zadaniu o /dagu/* — i Caddy przekazuje je tutaj.
+		}
+
+		# --- 1. Logowanie SPA odpowiadane przez proxy nie-sekretnym sentinelem ----
+		#
+		# Samo wstrzykniecie naglowka Authorization NIE wystarcza: route-guard SPA Dagu
+		# sprawdza localStorage['dagu_auth_token'] i bez niego laduje na /dagu/login
+		# (audyt P4 krok 1). Guard wymaga jedynie NIEPUSTEJ wartosci - nie dekoduje JWT
+		# lokalnie, sesje potwierdza przez GET /api/v1/auth/me, ktore przez wstrzykniety
+		# naglowek zwraca 200. Wiec siejemy sentinel i tyle.
+		handle /dagu/api/v1/auth/login {
+			header Content-Type application/json
+			respond `{"token":"SENTINEL-proxy-managed","expiresAt":"2099-01-01T00:00:00Z","user":{"authProvider":"builtin","role":"admin","username":"admin","workspaceAccess":{"all":true}}}` 200
+		}
+
+		# --- 2. Zaslepienie /setup -----------------------------------------------
+		#
+		# Dopoki Dagu nie ma konta administratora, POST /api/v1/auth/setup zaklada je
+		# BEZ zadnego uwierzytelnienia. Po bootstrapie Dagu odrzuca to sam, ale nie
+		# polegamy na tym: trasa jest zamknieta na proxy, zeby przejecie instancji nie
+		# zalezalo od kolejnosci zdarzen. Bootstrap robi sie przez `docker compose exec`,
+		# z pominieciem proxy (patrz .env.example).
+		handle /dagu/api/v1/auth/setup {
+			respond `{"error":"setup zamkniety na proxy - bootstrap wylacznie przez docker compose exec"}` 403
+		}
+
+		# --- 3. Reszta Dagu: podmiana Authorization na prawdziwy token ------------
+		#
+		# `handle`, NIE `handle_path`: prefiksu /dagu NIE WOLNO obcinac. Dagu ma natywne
+		# DAGU_BASE_PATH i rejestruje pod nim wszystko (/dagu/assets, /dagu/api/v1,
+		# /dagu/mcp) - inaczej niz n8n, ktore rejestruje trasy w korzeniu.
+		#
+		# Uwaga skladniowa potwierdzona wykonaniem (audyt P4): `/dagu*` w parze
+		# z `redir /dagu /dagu/` tworzy petle 301 (ERR_TOO_MANY_REDIRECTS), bo
+		# Dagu samo przekierowuje /dagu/ -> /dagu. Dlatego TU NIE MA `redir`.
+		#
+		# Jedna trasa obejmuje XHR i SSE (events/stream) jednakowo.
+		handle {
+			reverse_proxy dagu:8080 {
+				# Prawdziwy token, wstrzykiwany z pliku konfiguracji (Compose `configs`),
+				# zeby nie siedzial w `docker inspect` proxy.
+				import /etc/caddy/dagu-token.conf
+
+				# Ramka: Dagu ma X-Frame-Options: DENY zaszyte w kodzie i nie wystawia
+				# wlasnego CSP. Bez tych dwoch linii scenariusze R01, R04 i R13 nie
+				# przechodza - worker testow zmierzyl DENY takze na GET /dagu/.
+				# Akceptacja L6 w decyzji par. 5.2 ("Srodki niezalezne").
+				header_down -X-Frame-Options
+				header_down Content-Security-Policy "frame-ancestors 'self'"
+			}
+		}
+	 }
+	}
+
+	# --- Edytor n8n pod /n8n/ (droga wycofania, profil `n8n`) ------------------
 	#
 	# Uwaga na zachowanie n8n 2.38.7: N8N_PATH=/n8n/ przepisuje wylacznie adresy
 	# w index.html i ustawia window.BASE_PATH='/n8n/', ale serwer nadal rejestruje
 	# wszystkie trasy w korzeniu (/assets, /static, /rest, /favicon.ico...).
-	# Sprawdzone bezposrednio na kontenerze:
-	#   GET n8n:5678/assets/index-*.js      -> 200 text/javascript
-	#   GET n8n:5678/n8n/assets/index-*.js  -> 200 text/html  (fallback SPA)
-	# Dlatego uzywamy handle_path, ktore ODCINA prefiks /n8n przed przekazaniem
-	# zadania. Przegladarka prosi o /n8n/assets/x.js, n8n dostaje /assets/x.js.
-	#
-	# reverse_proxy w Caddy przepuszcza WebSocket (push n8n na /rest/push) bez
-	# dodatkowej konfiguracji.
+	# Dlatego tu - i tylko tu - uzywamy handle_path, ktore ODCINA prefiks.
+	# To jest obejscie bledu n8n, nie wzorzec: dla Dagu robimy inaczej (wyzej).
 	handle_path /n8n/* {
 		reverse_proxy n8n:5678
 	}
 
-	# Wygodne przekierowanie /n8n -> /n8n/
+	# Wygodne przekierowanie /n8n -> /n8n/ (bezpieczne, bo handle_path obcina prefiks
+	# i n8n nie przekierowuje z powrotem - inaczej niz Dagu).
 	redir /n8n /n8n/ permanent
 
-	# Backend czatu: model (Claude Code headless) z narzedziami MCP n8n.
+	# Backend czatu: model (Claude Code headless) za brama sesji i warstwa polityki.
 	handle /api/* {
 		reverse_proxy chat-backend:8787
 	}

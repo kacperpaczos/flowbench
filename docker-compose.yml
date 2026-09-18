@@ -1,8 +1,256 @@
-# Prototyp: React + edytor n8n w iframe.
-# Wszystko chodzi na jednym originie http://localhost:8080 (proxy), dzieki czemu
-# ciasteczko sesji n8n (SameSite=Lax) i CSP frame-ancestors 'self' dzialaja po HTTP.
+# Prototyp: React + silnik procesow w ramce, wszystko na jednym originie
+# http://127.0.0.1:8080 (proxy Caddy).
+#
+# Faza 1 (docs/decyzja-architektoniczna.md v3.1): silnikiem jest Dagu. Usluga n8n
+# zostaje ZA PROFILEM Compose jako droga wycofania - domyslnie nie wstaje, a jej
+# wolumen `n8n_data` (pelna nazwa n8niframe_n8n_data) pozostaje nietkniety.
+# Procedura wycofania: docs/wycofanie.md.
+
+# --- SIECI (decyzja par. 5.2, utwardzenie po werdykcie R-C) --------------------
+#
+# R-C zostalo przyjete swiadomie: krok DAG-a biegnie jako root w kontenerze silnika
+# i czyta jego plik konfiguracyjny (audyt P1). Czego jednak NIE musi miec, to drogi
+# na zewnatrz i ruchu bocznego - audyt P2 zmierzyl, ze dzis krok dosiega
+# `example.com` (gotowa eksfiltracja) i kazda usluge w sieci compose po nazwie DNS.
+# Dlatego trzy sieci:
+#
+#   wewnetrzna  internal: true  - bez bramy na swiat. Tu siedzi silnik.
+#   wycofanie   internal: true  - tylko stary n8n i proxy (patrz nizej).
+#   wyjsciowa                   - chat-backend (wola API modelu) i proxy (publikacja portu).
+#
+# Czego to NIE domyka, zapisane wprost: krok DAG-a dzieli `wewnetrzna` z `proxy`,
+# `frontend` i `chat-backend`, wiec dosiega ich po nazwie. Sieci Dockera sa
+# dwukierunkowe, a proxy MUSI dosiegac silnika - wiec i silnik dosiega proxy.
+# Przez proxy krok widzi to, co Caddy wystawia: /api/* (za brama sesji, 401),
+# aplikacje React i sam UI Dagu. Pomiary w raporcie T1.
+networks:
+  wewnetrzna:
+    internal: true
+  # Stary silnik dostaje WLASNA siec, dzielona wylacznie z proxy. Decyzja par. 5.2
+  # pokazuje n8n w `wewnetrzna`, ale wtedy krok DAG-a dosiegal by `n8n` po nazwie DNS -
+  # a wymaganie odbiorcze mowi wprost, ze nie ma dosiegac. Nic na tym nie traci:
+  # jedynym klientem n8n jest proxy (trasa /n8n/*), a chat-backend w trybie wycofania
+  # wola n8n TEZ przez proxy.
+  wycofanie:
+    internal: true
+  wyjsciowa: {}
+
+# --- KONFIGURACJE (sekrety plikiem, nie przez `environment:`) ------------------
+#
+# Audyt P1 rozstrzygnal, ze przeniesienie sekretow Dagu z `environment:` do pliku
+# konfiguracyjnego NIE JEST IZOLACJA: krok DAG-a biegnie jako root i ten plik czyta.
+# Robimy to dla dwoch wezszych, prawdziwych korzysci i tylko tyle twierdzimy:
+#   1. sekret nie siedzi w `docker inspect` uslugi,
+#   2. sekret nie jest w srodowisku KAZDEGO procesu potomnego silnika.
+# Wartosci pochodza z `.env` (wykluczony przez .gitignore), wzor w `.env.example`.
+configs:
+  dagu_config:
+    content: |
+      # Generowane przez Compose z .env - nie edytowac w kontenerze.
+      auth:
+        mode: builtin
+        builtin:
+          token:
+            secret: ${DAGU_AUTH_TOKEN_SECRET:?ustaw DAGU_AUTH_TOKEN_SECRET w .env}
+            ttl: 24h
+
+  # Prawdziwy token Dagu dla wariantu B2 (decyzja par. 5.2 R-B). Trzymany tak samo
+  # jak sekrety silnika - plikiem, nie w `environment:` proxy - zeby nie wyciekal
+  # przez `docker inspect n8niframe-proxy`.
+  caddy_token_dagu:
+    content: |
+      header_up Authorization "Bearer ${DAGU_PROXY_TOKEN:?ustaw DAGU_PROXY_TOKEN w .env}"
+
 services:
+  # --- SILNIK PROCESOW ---------------------------------------------------------
+  dagu:
+    # Przypiecie po digescie, nie po tagu (decyzja par. 3). Rownowazny tag: 2.16.6.
+    image: ghcr.io/dagucloud/dagu@sha256:b242dc7b605aa20d6db78ba192beb82135d390025a7d9c8dfd7f08e14464c69f
+    container_name: n8niframe-dagu
+    restart: unless-stopped
+    environment:
+      # PUID/PGID=0 to tutaj NAJMNIEJSZE dzialajace uprawnienie, nie wygoda.
+      # Docker na tym hoscie jest rootless: uid 0 w kontenerze = uid 1000 (paczos)
+      # na hoscie, czyli wlasciciel plikow repozytorium. Obraz domyslnie schodzi do
+      # PUID=1000 (`sudo -u #$PUID` w /entrypoint.sh), co w tym mapowaniu ladue na
+      # obcy subuid i traci prawo zapisu do bind-mounta `dags/`. Zmierzone warianty
+      # i dlaczego kazdy mniejszy nie dziala - raport T1 i docs/wycofanie.md par. 6.
+      PUID: "0"
+      PGID: "0"
+      DAGU_HOST: 0.0.0.0
+      DAGU_PORT: "8080"
+      # Natywne hostowanie pod podsciezka. Dagu rejestruje POD NIM wszystko
+      # (/dagu/assets, /dagu/api/v1, /dagu/mcp), wiec Caddy prefiksu NIE obcina.
+      DAGU_BASE_PATH: /dagu
+      DAGU_PUBLIC_URL: http://127.0.0.1:8080/dagu
+      # Bez tego Dagu zasiewa wlasne przyklady do dags/, a dags/ to repozytorium.
+      DAGU_SKIP_EXAMPLES: "true"
+      DAGU_TZ: Europe/Warsaw
+    configs:
+      - source: dagu_config
+        target: /var/lib/dagu/config.yaml
+        mode: 0400
+    volumes:
+      # JEDEN wolumen na cale /var/lib/dagu. Montowanie samych dags/ i data/ gubi
+      # logi przy `recreate` - zmierzone w audycie [D19]: 25 katalogow z logami -> 2,
+      # a log starego przebiegu zwracal 404.
+      - dagu_data:/var/lib/dagu
+      # Definicje procesow z repozytorium. Zapisywalne: `dagu_change upsert_dag`
+      # nadpisuje caly plik, a historia pracy agenta ma mieszkac w Gicie (par. 11).
+      - ./dags:/var/lib/dagu/dags
+      # Zatwierdzone kontrakty danych (wlasnosc T2). Silnik ma je tylko CZYTAC.
+      - ./kontrakty:/var/lib/dagu/kontrakty:ro
+    expose:
+      - "8080"                       # tylko w sieci compose; na host wychodzi przez proxy
+    networks:
+      - wewnetrzna                   # bez wyjscia na swiat i bez sasiadow spoza tej sieci
+    # Socket Dockera NIE jest montowany (decyzja par. 5.2, "Srodki niezalezne").
+
+  # --- APLIKACJA ---------------------------------------------------------------
+  frontend:
+    build: ./frontend
+    container_name: n8niframe-frontend
+    restart: unless-stopped
+    expose:
+      - "80"
+    networks:
+      - wewnetrzna
+
+  chat-backend:
+    build: ./chat-backend
+    container_name: n8niframe-chat
+    restart: unless-stopped
+    environment:
+      # Adres MCP silnika. CELOWO bezposrednio do `dagu`, z pominieciem proxy:
+      # proxy w wariancie B2 PODMIENIA naglowek Authorization na token admina, wiec
+      # ruch przez proxy podniosl by klucz agenta (developer/mcp) do admina i zniosl
+      # zawezenie z audytu P5. Obie uslugi sa w sieci `wewnetrzna`.
+      DAGU_MCP_URL: http://dagu:8080/dagu/mcp
+      # Klucz agenta: rola `developer`, allowedSurfaces ["mcp"] (par. 5.2, audyt P5).
+      # Nie opuszcza backendu - chat-backend/KONTRAKT.md par. 4.5.
+      DAGU_MCP_TOKEN: ${DAGU_AGENT_TOKEN:?ustaw DAGU_AGENT_TOKEN w .env}
+      KONTRAKTY_DIR: /app/kontrakty
+      ZEZWOLENIA_PLIK: /app/dane/zezwolenia.json
+      POLITYKA_MCP_PORT: "8788"
+      # Brama sesji /api/* (R-A). Kontrakt: chat-backend/sesja/KONTRAKT.md.
+      SESJA_HASLO: ${SESJA_HASLO:?ustaw SESJA_HASLO w .env}
+      SESJA_ORIGIN: ${SESJA_ORIGIN:-http://127.0.0.1:8080}
+      SESJA_TTL_H: ${SESJA_TTL_H:-8}
+    volumes:
+      # NAPRAWA BLEDU ZASTANEGO (decyzja par. 9 pkt 1): poprzednio montowany byl
+      # POJEDYNCZY PLIK ${HOME}/.claude/.credentials.json, co przypina i-wezel -
+      # atomowa podmiana na hoscie (zapis tymczasowy + rename) nie byla widoczna
+      # w kontenerze i czat konczyl sie "OAuth session expired".
+      # Teraz montowany jest KATALOG, ale nie ${HOME}/.claude (patrz usluga
+      # `poswiadczenia` nizej), tylko wolumen z jednym plikiem. Read-only.
+      - poswiadczenia:/seed:ro
+      # Kontrakty T2 read-only; obraz ma wlasna kopie jako wartosc domyslna.
+      - ./kontrakty:/app/kontrakty:ro
+    expose:
+      - "8787"
+    networks:
+      - wewnetrzna                   # proxy i silnik
+      - wyjsciowa                    # API modelu - jedyna usluga z wyjsciem na swiat
+    depends_on:
+      - dagu
+      - poswiadczenia
+
+  # --- POSWIADCZENIA: swiadomie glupi posrednik --------------------------------
+  #
+  # Po co on jest (nie usuwac bez przeczytania):
+  #
+  # Naprawa par. 9 pkt 1 wymaga montowania KATALOGU, bo montaz pojedynczego pliku
+  # przypina i-wezel. Ale jedyny katalog, w ktorym ten plik lezy, to ${HOME}/.claude,
+  # a tam obok poswiadczen siedzi: history.jsonl (historia promptow), projects/
+  # (pelne transkrypty rozmow), sessions/, shell-snapshots/, settings.json,
+  # telemetry/, uploads/. Wpuszczenie tego do kontenera, w ktorym biega model,
+  # byloby ZWIEKSZENIEM ekspozycji przy okazji naprawy czegos innego.
+  #
+  # Dlatego ekspozycja zostaje tutaj: ten kontener widzi ${HOME}/.claude (read-only),
+  # ale nie ma sieci (network_mode: none), nie ma modelu i nie robi nic poza
+  # przepisaniem JEDNEGO pliku do wolumenu `poswiadczenia`. chat-backend montuje ten
+  # wolumen read-only i widzi dokladnie jeden plik.
+  #
+  # Kopiowanie jest w petli (nie raz przy starcie), bo host odswieza token w tle co
+  # kilka godzin - jednorazowa kopia odtworzylaby dokladnie naprawiany blad.
+  # Kopiowanie jest atomowe (zapis obok + mv), zeby chat-backend nigdy nie zobaczyl
+  # polowy pliku.
+  poswiadczenia:
+    image: alpine:3.22
+    container_name: n8niframe-poswiadczenia
+    restart: unless-stopped
+    network_mode: none
+    read_only: true
+    volumes:
+      - ${HOME}/.claude:/host-claude:ro
+      - poswiadczenia:/poswiadczenia
+    command:
+      - sh
+      - -c
+      - |
+        set -eu
+        ZRODLO=/host-claude/.credentials.json
+        CEL=/poswiadczenia/.credentials.json
+        echo "posrednik poswiadczen: obserwuje $$ZRODLO co 5 s"
+        while :; do
+          if [ -f "$$ZRODLO" ]; then
+            NOWA=$$(sha256sum "$$ZRODLO" | cut -d' ' -f1)
+            STARA=$$(cat /poswiadczenia/.suma 2>/dev/null || echo brak)
+            if [ "$$NOWA" != "$$STARA" ]; then
+              # Plik tymczasowy w TYM SAMYM katalogu, potem mv - podmiana atomowa.
+              cp "$$ZRODLO" "$$CEL.tmp"
+              chmod 600 "$$CEL.tmp"
+              mv "$$CEL.tmp" "$$CEL"
+              printf '%s' "$$NOWA" > /poswiadczenia/.suma
+              echo "poswiadczenia odswiezone $$(date -Is) suma=$${NOWA%$${NOWA#????????}}..."
+            fi
+          else
+            echo "UWAGA: brak $$ZRODLO na hoscie - czat nie bedzie mogl sie uwierzytelnic"
+          fi
+          sleep 5
+        done
+
+  # --- PROXY -------------------------------------------------------------------
+  proxy:
+    image: caddy:2.10-alpine
+    container_name: n8niframe-proxy
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8080:80"          # tylko lokalnie, bez wystawiania na swiat
+    configs:
+      - source: caddy_token_dagu
+        target: /etc/caddy/dagu-token.conf
+        mode: 0400
+    volumes:
+      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - wewnetrzna
+      # `wyjsciowa` jest tu z POWODU TECHNICZNEGO, nie z potrzeby wyjscia na swiat.
+      # Zmierzone na tym hoscie (Docker 29.8.0, rootless): kontener podpiety
+      # WYLACZNIE do sieci `internal: true` nie dostaje mapowania portu - Docker
+      # cicho je gubi (`.NetworkSettings.Ports` = {"80/tcp":null}) i 127.0.0.1:8080
+      # nie odpowiada. Ten sam kontener dopiety dodatkowo do zwyklej sieci publikuje
+      # port normalnie. Decyzja par. 5.2 pokazuje `proxy: [wewnetrzna]`, ale tamten
+      # fragment jest ilustracja podzialu, a wymaganie brzmi: SILNIK bez wyjscia
+      # i bez sasiadow. `dagu` zostaje wylacznie w `wewnetrzna` i to sie nie zmienia.
+      - wyjsciowa
+      - wycofanie                    # trasa /n8n/* po wlaczeniu profilu `n8n`
+    depends_on:
+      - dagu
+      - frontend
+      - chat-backend
+
+  # --- DROGA WYCOFANIA: stary silnik za profilem -------------------------------
+  #
+  # `docker compose up -d` NIE uruchamia tej uslugi. Wlacza sie ja jawnie:
+  #   docker compose --profile n8n up -d n8n
+  # Wolumen n8n_data (n8niframe_n8n_data) z 15 procesami i 12 wykonaniami jest
+  # NIETYKALNY. Zakazane na kazdym etapie: `docker compose down -v`,
+  # `docker volume rm`, `docker system prune`.
   n8n:
+    profiles: ["n8n"]
     image: n8nio/n8n:2.38.7          # aktualny tag "stable" na Docker Hub (2026-09-14)
     container_name: n8niframe-n8n
     restart: unless-stopped
@@ -24,6 +272,7 @@ services:
       # Od n8n 2.17.0. MANAGED_BY_ENV=true sprawia, ze n8n stosuje te wartosci
       # przy kazdym starcie i blokuje edycje tego uzytkownika w UI.
       # Hash bcrypt hasla "Admin123" ($$ to ucieczka przed interpolacja Compose).
+      # To lokalne haslo demonstracyjne na 127.0.0.1, odnotowane w decyzji par. 11.
       N8N_INSTANCE_OWNER_MANAGED_BY_ENV: "true"
       N8N_INSTANCE_OWNER_EMAIL: admin@admin.com
       N8N_INSTANCE_OWNER_FIRST_NAME: Admin
@@ -43,46 +292,12 @@ services:
       - n8n_data:/home/node/.n8n     # trwale dane: baza SQLite + klucz szyfrowania
     expose:
       - "5678"                       # tylko w sieci compose, bez publikacji na host
-
-  frontend:
-    build: ./frontend
-    container_name: n8niframe-frontend
-    restart: unless-stopped
-    expose:
-      - "80"
-
-  chat-backend:
-    build: ./chat-backend
-    container_name: n8niframe-chat
-    restart: unless-stopped
-    environment:
-      N8N_MCP_URL: http://proxy/n8n/mcp-server/http
-      N8N_MCP_TOKEN: ${N8N_MCP_TOKEN:?ustaw N8N_MCP_TOKEN w pliku .env}
-    volumes:
-      # Poswiadczenia Claude Code, read-only. Entrypoint kopiuje je do zapisywalnego
-      # miejsca w kontenerze, wiec odswiezenie tokenu nie rusza pliku na hoscie.
-      - ${HOME}/.claude/.credentials.json:/seed/.credentials.json:ro
-    expose:
-      - "8787"
-    depends_on:
-      - n8n
-
-  proxy:
-    image: caddy:2.10-alpine
-    container_name: n8niframe-proxy
-    restart: unless-stopped
-    ports:
-      - "127.0.0.1:8080:80"          # tylko lokalnie, bez wystawiania na swiat
-    volumes:
-      - ./proxy/Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - n8n
-      - frontend
-      - chat-backend
+    networks:
+      - wycofanie                    # osobna siec: krok DAG-a nie widzi tej nazwy
 
 volumes:
-  n8n_data:
+  n8n_data:          # NIETYKALNY - pelna nazwa n8niframe_n8n_data
+  dagu_data:         # cale /var/lib/dagu: definicje, historia, logi, klucze API
+  poswiadczenia:     # jeden plik: kopia .credentials.json z hosta
   caddy_data:
   caddy_config:

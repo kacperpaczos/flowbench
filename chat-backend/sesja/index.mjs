@@ -11,12 +11,24 @@
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 
 const NAZWA_CIASTECZKA = 'sesja_operatora'
-const SCIEZKA_CIASTECZKA = '/api'          // ograniczona sciezka: nie jedzie do /dagu/*
+// Sciezka ciasteczka to '/' — SWIADOMIE szersza niz pierwotne '/api'.
+// Powod: uzgodniona z koordynatorem powierzchnia (chat-backend/brama-sesji.mjs)
+// dodaje /api/sesja/weryfikacja jako cel `forward_auth` Caddy'ego, ktorym CALY
+// origin — takze /dagu/* — staje za sesja. Przegladarka wysyla ciasteczko tylko
+// do sciezek objetych Path, wiec przy Path=/api zadanie o /dagu/* przyszloby bez
+// ciasteczka i forward_auth odrzucalby zalogowanego operatora.
+// Zawezenie zostaje na innych osiach: HttpOnly + SameSite=Strict.
+// Tak samo mial to stanowisko z audytu par. P6 (Path=/).
+const SCIEZKA_CIASTECZKA = '/'
 const METODY_ZMIENIAJACE = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
-const TRASA_LOGOWANIA = '/api/logowanie'
-const TRASA_WYLOGOWANIA = '/api/wylogowanie'
+const TRASA_LOGOWANIA = '/api/sesja/logowanie'
+const TRASA_WYLOGOWANIA = '/api/sesja/wylogowanie'
 const TRASA_STANU = '/api/sesja'
+// Cel `forward_auth` Caddy'ego: 200 przy waznej sesji, 401 bez niej. Dzieki temu
+// /dagu/* stoi za ta sama brama co /api/* (decyzja par. 5.2: przy wariancie B2
+// kazdy, kto dosiegnie originu, dostaje UI admina Dagu).
+const TRASA_WERYFIKACJI = '/api/sesja/weryfikacja'
 
 /** Porownanie o stalym czasie, niezalezne od dlugosci wejscia. */
 function rowneHasla(podane, oczekiwane) {
@@ -144,6 +156,13 @@ export function utworzBrameSesji(opcje = {}) {
     if (sciezka === TRASA_STANU && metoda === 'GET') {
       const wpis = znajdzSesje(req)
       odpowiedz(res, 200, { zalogowany: Boolean(wpis), wygasa: wpis?.wygasa ?? null })
+      return true
+    }
+
+    if (sciezka === TRASA_WERYFIKACJI && (metoda === 'GET' || metoda === 'HEAD')) {
+      const wpis = znajdzSesje(req)
+      if (wpis) odpowiedz(res, 200, { ok: true })
+      else odpowiedz(res, 401, { error: 'wymagana sesja operatora — zaloguj sie' })
       return true
     }
 
