@@ -989,3 +989,585 @@ W konwencji §6:
 6. **Migawka bazy zostaje w katalogu tymczasowym sesji** i zniknie razem z nią (§7.2).
    To jest świadoma decyzja, nie przeoczenie: plik zawiera materiał, którego nie wolno
    położyć w repozytorium, a `fixtures/` wystarczą do wszystkiego, po co go robiono.
+
+---
+
+## 8. Przepisanie procesów na DAG-i Dagu (2026-09-18)
+
+Sekcja 7 rozliczyła, **co wyjęto** z n8n. Ta sekcja rozlicza, **co z tego zbudowano**
+w Dagu i jak wypadło porównanie. Podstawa: `docs/decyzja-architektoniczna.md` wersja 3 —
+kontrakt K1–K6 (§4.1), polityka identyfikatorów (§4.2), dwa osobne sprawdzenia
+wariantu A i B (§10.1), warunek W-3 (§7.1).
+
+Wynik pracy: `dags/` (6 definicji YAML + 18 skryptów kroków), `fixtures/*/wezly-posrednie.json`,
+`fixtures/_narzedzia/porownaj.py`.
+
+### 8.0 Co się zmieniło wobec §4 tego dokumentu
+
+**Sekcja 4 jest nieaktualna i zostaje jako zapis stanu wiedzy z 2026-09-18 przed południem.**
+Jej szkice YAML opierały się na `DAGU_OUTPUT_FILE`, `outputs:` i `${steps.*.outputs.*}` —
+wszystkie trzy konstrukcje są dziś **zakazane przez K5**. Trzy konkretne rzeczy, które §4
+mówiła źle:
+
+| §4 mówiła | Jest |
+|---|---|
+| wynik przez `RESULT=` w `$DAGU_OUTPUT_FILE`, `outputs: [{name, type}]` | stdout + `output:` + obiektowy `output_schema:`; stary kanał jest niewidoczny dla walidatora |
+| §4.0(d): „każdy krok odbierający musi objąć podstawienie apostrofami" | **to się łamie na pierwszym `Gość's`.** Wartość jedzie zmienną środowiskową, czytaną jako `"$NAZWA"` — cytowanie przestaje być problemem autora |
+| identyfikatory kroków w szkicach: `set-status`, `policz-wartosc-brutto` | **silnik ich nie przyjmie.** `id` kroku musi pasować do `^[a-zA-Z][a-zA-Z0-9_]*$` — bez myślnika. To osobna reguła niż §4.2, która rządzi nazwą DAG-a |
+
+Ostatni wiersz jest błędem, który §4 popełniła na sucho, bez uruchomienia. Komunikat silnika:
+
+```
+Error: failed to load DAG from sonda-env: ... invalid step ID format:
+must match ^[a-zA-Z][a-zA-Z0-9_]*$ (use '_' instead of '-') (value: pokaz-env)
+```
+
+Stąd w `dags/` nazwy DAG-ów są w `kebab-case` (§4.2), a `id` kroków w `snake_case`
+(reguła silnika). Nazwy wyświetlane kroków (`name:`) to **dokładnie nazwy węzłów n8n** —
+dzięki temu porównanie krok-po-kroku nie potrzebuje żadnej tabeli tłumaczeń.
+
+### 8.1 Co powstało
+
+| plik | proces n8n | węzły → kroki | rola |
+|---|---|---|---|
+| `dags/status-ok.yaml` | `gnzjOf2qHJoEPeGo` | 2 → 1 | fixture regresji R02/R03 |
+| `dags/demo-mcp-wartosc-zamowienia.yaml` | `ag3nCPjnADFqUADE` | 3 → 2 | dowód end-to-end R02/R03/R14 |
+| `dags/lista-produktow-suma-zamowienia.yaml` | `UQeWUmSDcg9gKXXY` | 3 → 2 | najostrzejszy test konwencji dokumentu |
+| `dags/premie-od-pensji.yaml` | `aEUUAnNsUr7LJIyr` | 7 → 6 | **wariant A** — wierność liczb |
+| `dags/premie-od-pensji-galezie.yaml` | `aEUUAnNsUr7LJIyr` | 7 → 8 | **wariant B** — przypadek odbiorczy §10 |
+| `dags/duze-dane-manifest.yaml` | — | — | test K6, bez odpowiednika w n8n |
+
+Każdy proces traci wyzwalacz jako widoczny element grafu: `manualTrigger` nie ma
+odpowiednika, a DAG bez `schedule:` jest po prostu uruchamiany na żądanie.
+
+**Kontrakt dokumentu jest jeden dla wszystkich czterech procesów:** `{"elementy": [ ... ]}`.
+`elementy` odpowiada strumieniowi elementów n8n, który w Dagu nie istnieje. Opakowanie
+w obiekt nie jest ozdobą — silnik odrzuca schemat tablicowy **przy ładowaniu definicji**
+(`output_schema must resolve to an object schema`), więc tablica na najwyższym poziomie
+nie ma jak przejechać przez granicę kroku.
+
+**Logika deterministyczna mieszka w `dags/skrypty/`** (decyzja §2), definicje opisują
+wyłącznie orkiestrację i kontrakty.
+
+### 8.2 Uruchomienia na żywym Dagu
+
+Stanowisko: projekt compose `n8n-fixture`, kontener `n8n-fixture-dagu`, port
+`127.0.0.1:9301`, obraz przypięty po digeście
+`ghcr.io/dagucloud/dagu@sha256:b242dc7b…`, `PUID=0`/`PGID=0`, **socket Dockera niezamontowany**.
+Repozytorium zamontowane **read-only** pod `/repo`; definicje kopiowane do katalogu DAG-ów
+silnika skryptem, który za każdym razem **porównuje sumy sha256** — 24 pliki, wszystkie `OK`,
+więc silnik wykonuje dokładnie te pliki, które są w repozytorium.
+
+> Dlaczego kopia, a nie dowiązanie: silnik odrzuca dowiązania wychodzące poza katalog DAG-ów
+> (`external DAG file symlinks are disabled`), a sam katalog DAG-ów musi być **zapisywalny** —
+> przy pierwszym starcie zakłada w nim `wiki/` i pięć przykładowych DAG-ów, a gdy nie może,
+> **kontener nie wstaje w ogóle** (`Error: failed to create Wiki store … read-only file system`).
+> To jest wymaganie wdrożeniowe, którego nie ma ani w decyzji, ani w audycie: `dags/` pod
+> Gitem i `dags/` podsunięty silnikowi nie mogą być tym samym katalogiem, jeśli repozytorium
+> ma zostać czyste.
+
+```
+$ docker exec n8n-fixture-dagu dagu ls
+NAME
+demo-mcp-wartosc-zamowienia
+duze-dane-manifest
+lista-produktow-suma-zamowienia
+premie-od-pensji
+premie-od-pensji-galezie
+status-ok
+```
+
+**`status-ok`:**
+
+```
+dag: status-ok (0s)
+└─Set Status (0s) [succeeded]
+  ├─$SKRYPTY/status-ok-ustaw.sh
+  ├─stdout: …/Set_Status.20260918.180303.457.034R5KT1.out
+  │   {"elementy":[{"status":"OK"}]}
+  └─stderr: …/Set_Status.20260918.180303.457.034R5KT1.err
+      status-ok: ustawiam pole status
+Result: Succeeded
+```
+
+**`demo-mcp-wartosc-zamowienia`:**
+
+```
+├─Pozycja zamowienia (0s) [succeeded]
+│ └─stdout: {"elementy":[{"produkt":"Kabel HDMI 2.1","cenaNetto":49.99,"ilosc":3}]}
+└─Policz wartosc brutto (0s) [succeeded]
+  └─stdout: {"elementy":[{"produkt":"Kabel HDMI 2.1","ilosc":3,"netto":149.97,"brutto":184.46}]}
+Result: Succeeded
+```
+
+**`lista-produktow-suma-zamowienia`:**
+
+```
+└─Policz sume zamowienia (0s) [succeeded]
+  └─stdout: {"elementy":[{"orderId":"ZAM-2026-001","currency":"PLN","lines":[
+     {"sku":"P-001","name":"Klawiatura mechaniczna","unitPrice":349.99,"quantity":1,"lineTotal":349.99},
+     {"sku":"P-002","name":"Mysz bezprzewodowa","unitPrice":129.5,"quantity":2,"lineTotal":259},
+     {"sku":"P-003","name":"Podkladka pod mysz XL","unitPrice":59,"quantity":3,"lineTotal":177}],
+     "itemCount":3,"unitsTotal":6,"subtotal":785.99,"vatRate":0.23,"vat":180.78,"total":966.77}]}
+Result: Succeeded
+```
+
+**`premie-od-pensji` (wariant A):**
+
+```
+├─Dane pracownikow  (0s) [succeeded]
+├─Premia 8%         (0s) [succeeded]
+├─Dodatek 50 zl     (0s) [succeeded]
+├─Stawka podatku    (0s) [succeeded]
+├─Podatek dochodowy (0s) [succeeded]
+└─Suma premii       (0s) [succeeded]
+  └─stdout: {"elementy":[{"liczbaPracownikow":3,"sumaPensji":34500,"sumaPremii":2760,
+     "sumaDodatkow":150,"sumaPremiiRazem":2910,"sumaPodatku":10406,"sumaNaDoReke":27004,
+     "szczegoly":[{"imie":"Anna Kowalska","pensja":7200,"premia":576,"dodatek":50,
+     "premiaRazem":626,"stawkaPodatku":0.12,"podatek":939.12,"naDoReke":6886.88},
+     {"imie":"Piotr Nowak","pensja":11500,"premia":920,"dodatek":50,"premiaRazem":970,
+     "stawkaPodatku":0.32,"podatek":3990.4,"naDoReke":8479.6},
+     {"imie":"Maria Wisniewska","pensja":15800,"premia":1264,"dodatek":50,"premiaRazem":1314,
+     "stawkaPodatku":0.32,"podatek":5476.48,"naDoReke":11637.52}]}]}
+Result: Succeeded
+```
+
+**`premie-od-pensji-galezie` (wariant B):**
+
+```
+dag: premie-od-pensji-galezie (0s)
+├─Dane pracownikow (0s) [succeeded]
+├─Premia 8% (0s) [succeeded]
+├─Dodatek 50 zl (0s) [succeeded]
+├─Rozdziel progiem 10000 (0s) [succeeded]
+├─Bramka galezi (0s) [succeeded]
+├─Podatek 32% (powyzej progu) (0s) [succeeded]
+├─Podatek 12% (do progu) (0s) [succeeded]
+└─Suma premii (0s) [succeeded]
+Result: Succeeded
+```
+
+**`duze-dane-manifest`** — output w §8.6.
+
+### 8.3 Porównanie per proces
+
+`fixtures/_narzedzia/porownaj.py` czyta wynik **ze stdout ostatniego kroku w drzewie logów
+Dagu**, czyli dokładnie tę wartość, którą silnik zwalidował przez `output_schema`
+i opublikował przez `output:`. Nie z pośrednika i nie z przepisania ręcznego.
+
+```
+====================================================================================================
+WYNIK KONCOWY: DAG vs fixture n8n
+====================================================================================================
+  proces                             wartosci     typy         precyzja     kolejnosc  komplet pol
+  -------------------------------------------------------------------------------------------------
+  status-ok                          zgodne       zgodne       zgodne       zgodna     zgodne
+  demo-mcp-wartosc-zamowienia        zgodne       zgodne       zgodne       zgodna     zgodne
+  lista-produktow-suma-zamowienia    zgodne       zgodne       zgodne       zgodna     zgodne
+  premie-od-pensji                   zgodne       zgodne       zgodne       zgodna     zgodne
+  premie-od-pensji-galezie           zgodne       zgodne       zgodne       zgodna     zgodne
+
+====================================================================================================
+KROKI POSREDNIE: kazdy krok DAG-a vs odpowiadajacy wezel n8n
+====================================================================================================
+
+  status-ok: pominiete (proces ma jeden wezel wykonawczy - nie ma krokow posrednich)
+
+  demo-mcp-wartosc-zamowienia:
+    wezel n8n `Pozycja zamowienia`     -> krok DAG-a  zgodne  (3 lisci)
+    wezel n8n `Policz wartosc brutto`  -> krok DAG-a  zgodne  (4 lisci)
+
+  lista-produktow-suma-zamowienia:
+    wezel n8n `Lista produktow`        -> krok DAG-a  zgodne  (14 lisci)
+    wezel n8n `Policz sume zamowienia` -> krok DAG-a  zgodne  (23 lisci)
+
+  premie-od-pensji:
+    wezel n8n `Dane pracownikow`       -> krok DAG-a  zgodne  (9 lisci)
+    wezel n8n `Premia 8%`              -> krok DAG-a  zgodne  (15 lisci)
+    wezel n8n `Dodatek 50 zl`          -> krok DAG-a  zgodne  (24 lisci)
+    wezel n8n `Stawka podatku`         -> krok DAG-a  zgodne  (30 lisci)
+    wezel n8n `Podatek dochodowy`      -> krok DAG-a  zgodne  (36 lisci)
+    wezel n8n `Suma premii`            -> krok DAG-a  zgodne  (31 lisci)
+
+  premie-od-pensji-galezie: pominiete (wariant B ma INNY graf niz n8n - kroki posrednie
+                                       nie maja odpowiednikow 1:1 i nie sa porownywane)
+
+WYNIK: wszystkie procesy i wszystkie kroki posrednie zgodne z fixture
+```
+
+**Ani jednej różnicy do wyjaśnienia — i to jest twierdzenie mocniejsze, niż wygląda.**
+Porównanie jest po `repr()`, więc `1` i `1.0` są różnymi wartościami; kolejność elementów
+tablic jest zakodowana w ścieżkach (`szczegoly[0]`, `szczegoly[1]`), a kolejność kluczy
+w obiektach porównywana osobno. Pola nadmiarowe i brakujące liczone rozdzielnie, bo to
+dwie różne awarie.
+
+**Dlaczego liczby wyszły co do grosza.** Rejestr §4.2 pkt 3 kazał **sprawdzić, a nie założyć**,
+czy `Math.round(x*100)/100` w JS i `(x*100|round/100)` w `jq` dają to samo na liczbach
+zmiennoprzecinkowych. Sprawdzone, `jq` 1.7:
+
+```
+$ jq -cn '[939.12,3990.4,5476.48] | {surowa: add, zaokr: ((add*100|round)/100)}'
+{"surowa":10406,"zaokr":10406}
+$ jq -cn '{netto: ((49.99*3)*100|round/100), brutto: ((49.99*3*1.23)*100|round/100)}'
+{"netto":149.97,"brutto":184.46}
+$ jq -cn '[349.99,259,177] | {subtotal: ((add*100|round)/100), vat: ((add*0.23*100|round)/100)}'
+{"subtotal":785.99,"vat":180.78}
+```
+
+Zgadza się **także co do rozróżnienia całkowita/zmiennoprzecinkowa**: `jq` drukuje wartość
+całkowitą bez kropki, tak samo jak JS. To była realna niewiadoma — gdyby `jq` drukowało
+`10406.0`, każdy z czterech procesów wywracałby się na wymiarze „typy".
+
+### 8.4 Wariant A — zgodność liczbowa pole po polu
+
+Wymagana przez §10.1 jako osobne sprawdzenie. 31 liści, wszystkie zgodne co do ścieżki,
+wartości **i typu** (tabela pole-po-polu wobec migawki wykonania #11 jest w §7.5; tutaj
+ta sama struktura porównana z wynikiem DAG-a):
+
+| pole | fixture n8n | DAG `premie-od-pensji` | typ |
+|---|---|---|---|
+| `liczbaPracownikow` | 3 | 3 | int |
+| `sumaPensji` | 34500 | 34500 | int |
+| `sumaPremii` | 2760 | 2760 | int |
+| `sumaDodatkow` | 150 | 150 | int |
+| `sumaPremiiRazem` | 2910 | 2910 | int |
+| `sumaPodatku` | **10406** | **10406** | **int, nie float** |
+| `sumaNaDoReke` | **27004** | **27004** | **int, nie float** |
+| `szczegoly[0].imie` | Anna Kowalska | Anna Kowalska | str |
+| `szczegoly[0].stawkaPodatku` | 0.12 | 0.12 | float |
+| `szczegoly[0].podatek` | 939.12 | 939.12 | float |
+| `szczegoly[0].naDoReke` | 6886.88 | 6886.88 | float |
+| `szczegoly[1].stawkaPodatku` | 0.32 | 0.32 | float |
+| `szczegoly[1].podatek` | **3990.4** | **3990.4** | float, **1 cyfra** |
+| `szczegoly[1].naDoReke` | **8479.6** | **8479.6** | float, **1 cyfra** |
+| `szczegoly[2].podatek` | 5476.48 | 5476.48 | float, 2 cyfry |
+| `szczegoly[2].naDoReke` | 11637.52 | 11637.52 | float, 2 cyfry |
+
+(pozostałe 15 liści — `pensja`, `premia`, `dodatek`, `premiaRazem`, `imie` dla trzech
+pracowników — również zgodne; pełny wynik w tabeli §8.3)
+
+Dwa wiersze wytłuszczone są tymi, na których łatwo było polec: sumy wypadły całkowite,
+a precyzja **nie jest jednolita w obrębie jednego pola** (`3990.4` obok `939.12`). Jedno
+i drugie przeszło.
+
+### 8.5 Wariant B — dowód spełnienia §10
+
+**Stwierdzam wprost, zanim podam dowód: graf wariantu B jest inny niż w n8n.**
+W n8n warunek na stawkę podatku był wyrażeniem wewnątrz **jednego** węzła `set`
+(`={{ $json.pensjaZPremia > 10000 ? 0.32 : 0.12 }}`); silnik nie widział żadnej gałęzi,
+graf był liniowy, siedem węzłów w jednym ciągu. n8n **nigdy nie dzielił zbioru pracowników
+na dwie ścieżki**. Wariant B to przeprojektowanie, nie odtworzenie — i zgodnie z W-3 nie
+wolno go przedstawiać jako „odtworzenia procesu". Tym jest wariant A.
+
+Wymagania §10, każde osobno:
+
+| wymaganie §10 | jak spełnione | dowód |
+|---|---|---|
+| ≥ 3 zależne kroki, wynik kroku jest wejściem następnego | 8 kroków, każdy z `depends` i czytający `"$NAZWA"` poprzednika przez `jq` | drzewo przebiegu w §8.2 |
+| rozgałęzienie warunkowe **zależne od zawartości danych** | `podatek_wysoki` / `podatek_niski`, bramka liczona z `liczbaPowyzej`/`liczbaPonizej` zbioru | `Rozdziel progiem 10000` → `{"liczbaPowyzej":2,"liczbaPonizej":1}` |
+| fan-in zbierający gałęzie w jeden wynik | `suma_premii` z `depends: [podatek_wysoki, podatek_niski]`, `continue_on: {skipped: true}` na **obu** gałęziach | krok `succeeded`, nie `skipped (upstream skipped)` |
+| **żaden krok nie woła LLM** | same skrypty `jq`; zero `type: agent`, zero `harness`, zero `llm:` | skan niżej |
+| ten sam fixture daje ten sam wynik | wariant B i wariant A dają wynik **identyczny bajt w bajt** | porównanie niżej |
+
+```
+$ grep -rnE 'DAGU_OUTPUT_FILE|^\s*outputs:|\$\{steps\.|type:\s*agent|harness|^\s*llm:' \
+       dags/ --include='*.yaml' --include='*.sh' | grep -vE ':[0-9]+:\s*#'
+(brak wyjścia)   rc=1
+```
+
+Skan łapie naraz dwie rzeczy: brak wywołań modelu (§10) i brak zakazanych konstrukcji K5.
+Trzy trafienia, które widać bez filtra komentarzy, są w komentarzach: dwa w nagłówku
+`premie-od-pensji-galezie.yaml` (deklaracja „zero `type: agent`, zero `harness.run`")
+i jedno w `dags/skrypty/_naglowek.md` (zdanie „nigdy podstawieniem `${steps.*.outputs.*}`").
+
+**Wariant B daje wynik identyczny z wariantem A:**
+
+```
+$ diff <(cat …/premie-od-pensji/…/Suma_premii.*.out) \
+       <(cat …/premie-od-pensji-galezie/…/Suma_premii.*.out)
+IDENTYCZNE bajt w bajt
+```
+
+To nie było dane z góry. Po rozdzieleniu zbioru kolejność wyników nie jest gwarantowana,
+więc krok rozdzielający dokłada pole służbowe `_pozycja`, fan-in sortuje po nim przed
+zwinięciem i **usuwa je** przed emisją wyniku. Bez sortowania `szczegoly` wyszłoby
+w kolejności Piotr/Maria/Anna i porównanie wywaliłoby się na wymiarze „kolejność";
+bez usunięcia `_pozycja` — na wymiarze „komplet pól".
+
+#### Znalezisko: `preconditions` nie korzystają z kanału K4 i otwierają wektor, który K4 zamknął
+
+To jest **wada do zgłoszenia**, nie szczegół implementacyjny. Sprawdzone wykonaniem na
+przypiętej wersji, tą samą wartością, którą decyzja §4.1 użyła do dowodu
+(apostrof, cudzysłowy, `$(id)`, backticki):
+
+```
+KANAL DANYCH (K4): env + jq                        [succeeded]
+  ODEBRANE=[Kubek "Duzy" 0,5l - Gosc's $(id) `whoami`]     ← wartość dosłowna, nic nie wykonane
+
+PRECONDITION `eval` z `$NAZWA`                     [failed]
+  error: failed to evaluate the value: Error=phase substitute: failed to execute command
+  "printf '%s' \"{\"nazwa\":\"Kubek \\\"Duzy\\\" 0,5l - Gosc's $(id) ": exit status 2
+  stderr=/usr/bin/sh: 1: Syntax error: Unterminated quoted string
+```
+
+Widać dokładnie to, co K4 miało zamknąć: **wartość jest wklejana do tekstu polecenia przed
+uruchomieniem powłoki**. Polecenie urwało się na apostrofie w `Gosc's`, a tuż za nim
+w tekście siedzi `$(id)`, które powłoka wykonałaby, gdyby cytowanie nie padło wcześniej.
+Dodatkowo `eval` **nie widzi w ogóle** zmiennej publikowanej przez `output:` — nawet stała
+`eval: "echo true"` z `expected: "true"` kończy się `skipped`, bo `eval` porównuje **tekst
+wyrażenia**, a nie wynik polecenia, dopóki nie zawiera podstawienia.
+
+Działa natomiast `condition: "${NAZWA}"` + `expected: "re:…"`: podstawienie robi silnik,
+**powłoka nie jest w to w ogóle wciągana**, więc wektora wstrzyknięcia nie ma. Stąd kształt
+wariantu B: osobny krok `bramka_galezi` emituje dokument o **słownictwie zamkniętym**
+(`{"galazPowyzej":"tak","galazPonizej":"nie"}`), w którym nie ma ani jednego znaku
+pochodzącego z danych, a dane jadą osobno kanałem K4 i są parsowane `jq` wewnątrz gałęzi.
+
+**Do rozstrzygnięcia przez warstwę polityki:** `preconditions.eval` powinno być zakazane
+dla wyrażeń dotykających danych, tak jak K5 zakazuje `${steps.*.outputs.*}`. Dziś kontrakt
+tego nie mówi, bo §4.1 opisuje wyłącznie kanał wyniku.
+
+> Uwaga do `audyt-dagu-walidacja.md` §3.3: tamten przykład używa `eval` z `${RESULT}`
+> i kończy się `skipped`, co zinterpretowano jako „warunek poprawnie odrzucił złe dane".
+> Przy `eval`, które wartości nie widzi, `skipped` wychodzi **tak samo** — ten przebieg nie
+> odróżnia jednego od drugiego. Wniosek §3.3 („`preconditions` to bramka logiczna, nie
+> walidacja") zostaje w mocy; uzasadnienie wymaga poprawki.
+
+### 8.6 Test K6 — duże dane
+
+`dags/duze-dane-manifest.yaml`. Artefakt 50 000 rekordów, **2 716 684 B (2,59 MiB)**.
+
+**Ścieżka poprawna — dane nie są obcięte:**
+
+```
+├─Generuj artefakt (0s) [succeeded]
+│ └─stdout: {"sciezka":"duze-dane/pomiary.json","rozmiarB":2716684,
+│            "sha256":"2b13fc500454cc1dd5e529779ca5f78efe5ab613eb186abf50dcb56aa1a7d2ea",
+│            "liczbaRekordow":50000,"sumaWartosci":1249975000}
+├─Walidacja manifestu (1.0s) [succeeded]
+│ └─stderr: K6/manifest: zgodne - plik nie zostal obciety ani podmieniony
+│    stdout: {… "zgodnyRozmiar":true,"zgodnaSuma":true,"zawartoscSprawdzona":false, …}
+└─Walidacja zawartosci (0s) [succeeded]
+  └─stdout: {"liczbaRekordow":50000,"sumaWartosci":1249975000,"zgodnaZDeklaracja":true}
+Result: Succeeded
+```
+
+Dowód braku obcięcia jest podwójny i **liczony w dwóch różnych krokach**: `sha256` pliku
+policzona przy zapisie zgadza się z policzoną po drugiej stronie granicy kroku, a niezależnie
+od tego krok walidujący zawartość **przeliczył 50 000 rekordów i sumę wartości 1 249 975 000**
+(= 0+1+…+49999), która zgadza się z deklaracją.
+
+**Walidacja manifestu NIE jest walidacją zawartości — dowód, nie deklaracja.**
+Parametr `USZKODZ=tak` psuje zawartość pliku (jeden rekord mniej, jedno pole jako tekst
+zamiast liczby), ale rozmiar i sumę liczy z pliku **faktycznie zapisanego**, więc manifest
+jest wewnętrznie spójny:
+
+```
+$ dagu start duze-dane-manifest -- USZKODZ=tak
+
+├─Walidacja manifestu (0s) [succeeded]      ← manifest przeszedł
+│ └─stderr: K6/manifest: zgodne - plik nie zostal obciety ani podmieniony
+└─Walidacja zawartosci (0s) [failed]        ← zawartość odrzucona
+  └─stderr: K6/zawartosc: rekordow 49999, deklarowano 50000
+            K6/zawartosc: suma wartosci 1249925001, deklarowano 1249975000
+            K6/zawartosc: 1 rekordow ma pole 'wartosc' innego typu niz number
+            K6/zawartosc: ZAWARTOSC NIEZGODNA z deklaracja manifestu
+Result: Failed
+```
+
+Krok walidujący manifest przepuścił plik, który jest zepsuty. Gdyby walidacja manifestu
+uchodziła za walidację danych, ten przebieg byłby zielony.
+
+#### Znalezisko: sufity są dwa, a ten, który naprawdę obowiązuje, jest osiem razy niższy niż L5
+
+Decyzja §7.2 L5 mówi o limicie `max_output_size` 1 MiB na krok. Zmierzone wykonaniem:
+
+| rekordów | stdout | wynik | gdzie pada |
+|---|---|---|---|
+| 2 400 | 121 484 B | `Succeeded` | — |
+| 2 500 | 126 684 B | `Succeeded` | — |
+| **2 600** | **131 884 B** | **`Failed`** | **krok ODBIERAJĄCY:** `fork/exec /usr/bin/sh: argument list too long` |
+| 15 000 | 791 684 B | `Failed` | jw. (krok produkujący nadal `succeeded`) |
+| 50 000 | 2 716 684 B | `Failed` | krok PRODUKUJĄCY: `sync \|0: invalid argument` |
+
+```
+$ docker exec n8n-fixture-dagu sh -c 'getconf PAGE_SIZE; echo $(( $(getconf PAGE_SIZE) * 32 ))'
+4096
+131072
+```
+
+Granica **131 072 B** to `MAX_ARG_STRLEN` jądra (32 strony) — bo wartość `output:` jedzie
+do kroku odbierającego **jako pojedyncza zmienna środowiskowa**. To jest prawdziwy sufit
+kanału K1–K4, nie 1 MiB.
+
+Trzy wnioski, wszystkie praktyczne:
+
+1. **L5 podaje liczbę osiem razy za dużą** dla danych przekraczających granicę kroku.
+   1 MiB to sufit przechwycenia stdout, nie sufit przekazania.
+2. **Między 128 KiB a 1 MiB jest pas, w którym błąd pojawia się w niewłaściwym miejscu
+   grafu.** Krok, który wyprodukował za duży wynik, kończy się **zielony**; czerwony jest
+   niewinny odbiorca, z komunikatem o powłoce, który o rozmiarze danych nie mówi nic.
+3. **K6 trzeba stosować od ~128 KiB, nie od 1 MiB.** Próg w polityce powinien być
+   liczbowy i niższy niż zapisany dziś w L5.
+
+### 8.7 Zachowanie przy błędzie — testy negatywne
+
+W-2 wymaga, żeby kontrakt miał testy **pokazujące, że naruszenie jest wykrywane**.
+Dwa przebiegi na kopiach `premie-od-pensji.yaml` z podmienionym jednym skryptem
+(kopie poza repozytorium, żeby `dags/` zawierało wyłącznie definicje poprawne):
+
+**1. Krok gubi pola, które przyszły** — pułapka `includeOtherFields: true` z rejestru §4.4 pkt 2:
+
+```
+├─Dane pracownikow (0s) [succeeded]
+├─Premia 8% (0s) [failed]
+│ └─error: failed to validate output_schema: stdout JSON does not match output_schema
+├─Dodatek 50 zl [aborted]
+├─Stawka podatku [aborted]
+├─Podatek dochodowy [aborted]
+└─Suma premii [aborted]
+Result: Failed
+```
+
+**2. Wartość spoza dozwolonego zbioru** — `stawkaPodatku: 0.2` wobec `enum: [0.12, 0.32]`:
+
+```
+├─Dane pracownikow (0s) [succeeded]
+├─Premia 8% (0s) [succeeded]
+├─Dodatek 50 zl (0s) [succeeded]
+├─Stawka podatku (0s) [failed]
+│ └─error: failed to validate output_schema: stdout JSON does not match output_schema
+├─Podatek dochodowy [aborted]
+└─Suma premii [aborted]
+Result: Failed
+```
+
+W obu wypadkach krok jest **czerwony**, zależne `aborted`, DAG `failed`. To jest ta część
+kontraktu, którą silnik egzekwuje **bez naszego kodu** (decyzja §4.1a). Warto zauważyć,
+czego te testy **nie** dowodzą: silnik nie wymusza *istnienia* `output_schema` ani jego
+siły — schemat `{}` też jest dla niego poprawny. To zostaje warstwie polityki (T2).
+
+### 8.8 Wersjonowanie — historia edycji ma gdzie mieszkać
+
+Rejestr §4.4 pkt 5 stwierdzał: „Trzy wersje pośrednie tego procesu, które w n8n dają się
+odtworzyć z migawek wykonań, w Dagu po prostu by nie powstały. Jeśli historia »jak czat
+dochodził do rozwiązania« ma przetrwać, katalog `dags/` musi iść pod git."
+Decyzja v3 §11 tę decyzję podjęła. Sprawdzone:
+
+```
+$ git log --oneline -- dags/premie-od-pensji.yaml dags/skrypty/premie-stawka-podatku.sh
+c69eeda premie-od-pensji: prog podatkowy jako parametr, nie stala w skrypcie
+03187de Cztery procesy n8n jako DAG-i Dagu (kontrakt K1-K6, decyzja v3)
+```
+
+Druga edycja tego samego procesu daje **drugi commit**, a nie nadpisanie. Treść zmiany
+jest widoczna, nie tylko jej fakt:
+
+```
+$ git log -p --follow -- dags/skrypty/premie-stawka-podatku.sh
+commit c69eeda
+-echo "premie: wybieram stawke podatku progiem 10000" >&2
+-  progPodatkowy: 10000,
++prog="${PROG_PODATKOWY:-10000}"
++echo "premie: wybieram stawke podatku progiem ${prog}" >&2
++  progPodatkowy: $prog,
++  stawkaPodatku: (if .pensjaZPremia > $prog then 0.32 else 0.12 end)
+commit 03187de
++echo "premie: wybieram stawke podatku progiem 10000" >&2
++  progPodatkowy: 10000,
+```
+
+Edycja jest prawdziwa, nie kosmetyczna — próg przestał być stałą w dwóch miejscach skryptu
+i stał się parametrem procesu. Wartości domyślne dają wynik **identyczny z fixture**
+(porównanie w §8.3 jest po tej edycji), a przy innym progu proces liczy inaczej:
+
+```
+$ dagu start premie-od-pensji -- PROG_PODATKOWY=20000
+{"sumaPodatku":4489.2,"stawki":[0.12,0.12,0.12]}      ← wszyscy poniżej progu
+                    dla porównania fixture (próg 10000):
+{"sumaPodatku":10406,"stawki":[0.12,0.32,0.32]}
+```
+
+**Czego to nie zastępuje.** Git trzyma historię **plików**, a n8n trzymał historię
+**wykonań wraz z migawką definicji**. To nie jest to samo: z commitu nie da się odczytać,
+co proces wtedy policzył. Historia wykonań Dagu (`data/dag-runs/…/status.jsonl`) jest
+osobnym, nieskorelowanym z Gitem drzewem. Odpowiednikiem §1.1 byłoby dopiero powiązanie
+commitu z przebiegiem — tego dziś nie ma i nie jest to w zakresie Fazy 1.
+
+### 8.9 Czego nie dało się odtworzyć
+
+1. **Wyzwalacza jako elementu grafu.** `manualTrigger` nie ma odpowiednika; każdy z czterech
+   procesów ma o jeden widoczny element mniej. Dla R04 („w ramce widać kanwę z węzłami")
+   to różnica zauważalna, nie kosmetyczna.
+2. **Strumienia elementów.** n8n uruchamiał `set` i `code` raz na element automatycznie.
+   W Dagu trzy pozycje jadą jako jedna tablica w jednym dokumencie, a każdy krok robi jawny
+   `map()`. Przy trzech pracownikach wynik jest identyczny; przy realnych danych Fazy 2
+   sufitem staje się 128 KiB z §8.6.
+3. **Deklaracji typu per pole.** `{"name":"cenaNetto","value":49.99,"type":"number"}` z n8n
+   nie ma odpowiednika. `output_schema` odtwarza to **częściowo i nie zawsze wiernie**:
+   `type: number` przyjmuje i `3`, i `3.0`, więc kontrakt **nie umie** wymusić tego, że
+   `sumaPodatku` ma być całkowita. Zgodność int/float jest tu faktem zmierzonym przez
+   `porownaj.py`, a **nie** własnością wymuszoną przez silnik. To jest granica A2 z §7.2.
+4. **`includeOtherFields: true`.** Odtworzone **zachowaniem** (`map(. + {…})`), nie
+   mechanizmem. Zabezpieczeniem jest `required` + `additionalProperties: false` w każdym
+   kroku — działa (§8.7 test 1), ale wymaga, żeby ktoś ten schemat napisał kompletnie.
+5. **Historii wykonań n8n.** 12 wykonań zostaje w wolumenie n8n i nie jest przenoszone
+   (decyzja §2: „historia wykonań Dagu nie jest kontynuacją tej historii").
+6. **Wersji pośrednich procesu Premie jako wersji Dagu.** Cztery wersje z §1.1 są
+   zachowane jako **fixture** (`fixtures/premie-od-pensji/wersje/`), a nie jako historia
+   Gita — bo powstały w n8n, przed istnieniem repozytorium. Od teraz historia rośnie
+   w Gicie (§8.8), ale te cztery wersje do niej nie wchodzą.
+7. **Węzłów `code` przepisanych dosłownie.** Obraz Dagu **nie zawiera ani `node`, ani
+   `python3`** — sprawdzone: `jq 1.7`, `bash`, `awk`, `sed`, `sha256sum`, `openssl`.
+   To zamyka pytanie otwarte z §5 pkt 2 tego dokumentu: `jq` **jest**, interpreterów
+   do przeniesienia kodu JS 1:1 **nie ma**. Cała logika czterech węzłów `code` została
+   przepisana na `jq`, a nie przeniesiona.
+8. **Wyników węzłów pośrednich wariantu B wobec n8n.** Wariant B ma inny graf, więc jego
+   kroki pośrednie nie mają odpowiedników 1:1 i `porownaj.py` ich **nie porównuje** —
+   jawnie, komunikatem, a nie przez pominięcie. Porównywany jest wyłącznie wynik końcowy.
+
+### 8.10 Zmiany stanu wprowadzone przez to przepisanie
+
+1. **Kontener `n8niframe-n8n` działał przez cały czas i działa nadal.** Zero restartów,
+   zero `docker compose down`. Wolumen `n8niframe_n8n_data` montowany wyłącznie `:ro`,
+   raz — do zrobienia migawki (§8.11). Liczniki bez zmian: 15 workflow, 12 wykonań.
+2. **Stanowisko Dagu:** projekt compose `n8n-fixture`, jeden kontener `n8n-fixture-dagu`,
+   port `127.0.0.1:9301`. Portów 8080, 91xx, 92xx i 94xx nie dotykałem. Socket Dockera
+   niezamontowany. Katalog roboczy silnika poza repozytorium.
+3. **Utworzone: `dags/` (6 definicji + 18 skryptów + `_naglowek.md`),
+   `fixtures/*/wezly-posrednie.json` (3 pliki), `fixtures/_narzedzia/porownaj.py`,
+   ta sekcja.** Zaktualizowane: `fixtures/MANIFEST.json`, `fixtures/README.md`,
+   `fixtures/_narzedzia/ekstrakcja.py`. Żaden inny plik nie został zmieniony — w szczególności
+   `chat-backend/`, `frontend/`, `docker-compose.yml`, `proxy/Caddyfile`, `tests/`
+   i `docs/decyzja-architektoniczna.md`.
+4. **Zero sekretów w `dags/` i w `fixtures/`** — skan wartości (bcrypt, 32-hex, 64-hex, JWT,
+   base64 ≥ 40) i słownikowy (`token|secret|passw|credential|api_key|bearer`) na `dags/`:
+   po **zero trafień** w obu.
+5. **Sondy badawcze** (`sonda-env`, `sonda-precond`, `sonda-wstrzyk`, `sonda-sufit2`,
+   `sonda-neg-*`) powstały **poza repozytorium**, w katalogu roboczym silnika, i giną razem
+   z nim. Ich wyniki są przepisane wyżej.
+
+### 8.11 Migawka bazy
+
+Migawka z sekcji 7 zniknęła razem z tamtą sesją, więc powstała **ponownie**, tą samą metodą
+(online-backup, wolumen read-only, kontener n8n działa):
+
+```
+$ sqlite3 "file:$SNAP?mode=ro" "PRAGMA integrity_check; PRAGMA quick_check;"
+ok
+ok
+$ sqlite3 "file:$SNAP?mode=ro" "SELECT 'workflow_entity ', count(*) FROM workflow_entity
+    UNION ALL SELECT 'execution_entity', count(*) FROM execution_entity
+    UNION ALL SELECT 'execution_data  ', count(*) FROM execution_data;"
+workflow_entity |15
+execution_entity|12
+execution_data  |12
+$ sha256sum "$SNAP"
+52602ad9d244bcbdbbabd758025a3c6e8d54a274cace73d923d9eea63e35f306
+```
+
+**Suma kontrolna różni się od tej z §7.2** (`435c6392…`) — i to jest poprawne, nie usterka:
+źródłowa baza jest żywa, dziennik WAL rośnie, więc kolejny online-backup daje inny plik.
+Niezmienne jest to, co z niego wyjęto: ponowna ekstrakcja dała fixture **zgodne co do treści**
+z poprzednimi (`weryfikuj.py`: wszystko zgodne, 27 wpisów manifestu, pokrycie pełne).
+Migawka ponownie **nie wchodzi do repozytorium** — `.gitignore` odrzuca `*.sqlite`.
