@@ -19,6 +19,11 @@ description: "Premie 8% od pensji — wariant A (wierność liczb, graf liniowy 
 group: migracja-n8n
 labels: [migracja-n8n, faza-1, wariant-a]
 
+# Prog podatkowy jest parametrem procesu, a nie liczba wpisana w skrypt.
+# Wartosc domyslna 10000 odtwarza wyrazenie z n8n (`$json.pensjaZPremia > 10000`).
+params:
+  - PROG_PODATKOWY: "10000"
+
 env:
   SKRYPTY: /var/lib/dagu/dags/skrypty
 
@@ -103,6 +108,8 @@ steps:
     name: "Stawka podatku"
     description: "n8n: wezel `Stawka podatku` (set, wyrazenie warunkowe w jednym wezle)"
     depends: [dodatek_50_zl]
+    env:
+      PROG_PODATKOWY: "${PROG_PODATKOWY}"
     run: "$SKRYPTY/premie-stawka-podatku.sh"
     output: ZE_STAWKA
     output_schema:
