@@ -1,0 +1,17 @@
+{
+  "kontrakt": "wartosc-zamowienia",
+  "wersja": 1,
+  "opis": "Wartosc pojedynczej pozycji zamowienia. Odpowiednik fixture demo-mcp-wartosc-zamowienia.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["produkt", "ilosc", "netto", "brutto"],
+    "properties": {
+      "produkt": { "type": "string" },
+      "ilosc": { "type": "integer" },
+      "netto": { "type": "number" },
+      "brutto": { "type": "number" }
+    }
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "kontrakt": "status-procesu",
+  "wersja": 1,
+  "opis": "Najprostszy wynik kroku: jedno pole statusu. Odpowiednik fixture status-ok.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["status"],
+    "properties": {
+      "status": { "type": "string" }
+    }
+  }
+}

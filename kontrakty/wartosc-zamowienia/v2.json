@@ -1,0 +1,18 @@
+{
+  "kontrakt": "wartosc-zamowienia",
+  "wersja": 2,
+  "opis": "Jak v1, plus stawka VAT uzyta do wyliczenia brutto. Zmiana kontraktu = nowy plik w Gicie, nie edycja definicji procesu.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["produkt", "ilosc", "netto", "brutto", "stawkaVat"],
+    "properties": {
+      "produkt": { "type": "string" },
+      "ilosc": { "type": "integer" },
+      "netto": { "type": "number" },
+      "brutto": { "type": "number" },
+      "stawkaVat": { "type": "number" }
+    }
+  }
+}

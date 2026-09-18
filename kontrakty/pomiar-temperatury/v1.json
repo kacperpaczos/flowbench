@@ -1,0 +1,15 @@
+{
+  "kontrakt": "pomiar-temperatury",
+  "wersja": 1,
+  "opis": "Pojedynczy pomiar temperatury z jednego miasta.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["miasto", "temperatura"],
+    "properties": {
+      "miasto": { "type": "string" },
+      "temperatura": { "type": "number" }
+    }
+  }
+}

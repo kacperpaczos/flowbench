@@ -363,6 +363,7 @@ Powiedziane wprost, bo `docs/audyt-dagu-bezpieczenstwo.md` P3 rozstrzygnął to 
 | `GRAF_CYKL` | cykl w `depends` | §4.1a |
 | `GRAF_ZALEZNOSC_NIEISTNIEJACA` | `depends` na nieznany krok | §4.1a |
 | `K2_BRAK_OUTPUT` | krok ma `output_schema`, ale nie ma `output:` | K2 |
+| `K2_OUTPUT_NIEPLASKI` | `output:` w postaci obiektowej (kanał `${step.output.*}`) zamiast nazwy zmiennej | K2 |
 | `K3_BRAK_SCHEMATU` | krok publikuje wynik bez `output_schema` | K3, §4.1a |
 | `K3_SCHEMAT_PUSTY` | `output_schema: {}` | K3 |
 | `K3_SCHEMAT_NIEOBIEKTOWY` | `type` inny niż `object` | K3 |

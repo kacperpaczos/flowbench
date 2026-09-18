@@ -1,0 +1,16 @@
+{
+  "kontrakt": "srednia-temperatur",
+  "wersja": 1,
+  "opis": "Wynik fan-inu po rozgalezieniu warunkowym: srednia z pomiarow, ktore doszly.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["liczbaPomiarow", "srednia", "galezie"],
+    "properties": {
+      "liczbaPomiarow": { "type": "integer" },
+      "srednia": { "type": "number" },
+      "galezie": { "type": "array", "items": { "type": "string" } }
+    }
+  }
+}

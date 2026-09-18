@@ -1,0 +1,13 @@
+{
+  "name": "polityka-kontraktu",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Warstwa polityki kontraktu danych dla silnika Dagu (T2, Faza 1).",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "yaml": "^2.8.1"
+  }
+}

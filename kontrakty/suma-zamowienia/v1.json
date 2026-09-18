@@ -1,0 +1,36 @@
+{
+  "kontrakt": "suma-zamowienia",
+  "wersja": 1,
+  "opis": "Zamowienie z lista pozycji i podsumowaniem. Odpowiednik fixture lista-produktow-suma-zamowienia.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["orderId", "currency", "lines", "itemCount", "unitsTotal", "subtotal", "vatRate", "vat", "total"],
+    "properties": {
+      "orderId": { "type": "string" },
+      "currency": { "type": "string" },
+      "lines": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["sku", "name", "unitPrice", "quantity", "lineTotal"],
+          "properties": {
+            "sku": { "type": "string" },
+            "name": { "type": "string" },
+            "unitPrice": { "type": "number" },
+            "quantity": { "type": "integer" },
+            "lineTotal": { "type": "number" }
+          }
+        }
+      },
+      "itemCount": { "type": "integer" },
+      "unitsTotal": { "type": "integer" },
+      "subtotal": { "type": "number" },
+      "vatRate": { "type": "number" },
+      "vat": { "type": "number" },
+      "total": { "type": "number" }
+    }
+  }
+}
