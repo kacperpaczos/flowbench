@@ -416,6 +416,16 @@ async function obsluzCzat(req, res) {
   const message = String(parsed.message ?? '').trim()
   if (!message) return json(res, 400, { error: 'pusta wiadomosc' })
 
+  // Wiazanie rozmowy z sesja (par. 13.3 S3, chat-backend/sesja/KONTRAKT.md par. 1.3).
+  // sessionId przychodzi z CIALA zadania i idzie prosto do `claude --resume`, wiec bez
+  // tego sprawdzenia druga sesja operatora wznowilaby cudza rozmowe, znajac samo jej id.
+  // Modul sesji nie moze tego wymusic sam - nie widzi ciala zadania.
+  const sesja = kontrola.sesja ?? null
+  if (typeof sesja?.czyRozmowaNalezy === 'function'
+      && !sesja.czyRozmowaNalezy(parsed.sessionId ?? null)) {
+    return json(res, 403, { error: 'Ta rozmowa należy do innej sesji.' })
+  }
+
   const otwartyProces = WZORZEC_NAZWY.test(String(parsed.dagName ?? '')) ? String(parsed.dagName) : null
   const otwarteWykonanie = otwartyProces && WZORZEC_WYKONANIA.test(String(parsed.dagRunId ?? ''))
     ? String(parsed.dagRunId) : null
@@ -450,6 +460,9 @@ async function obsluzCzat(req, res) {
     })
 
     const text = String(odpowiedz.result ?? '')
+    if (typeof sesja?.zwiazRozmowe === 'function' && odpowiedz.session_id) {
+      sesja.zwiazRozmowe(odpowiedz.session_id)
+    }
     const dagName = obserwacja.dagName ?? otwartyProces
     const dagRunId = obserwacja.dagRunId
     const { nazwaWyswietlana } = await opisProcesu(dagName)

@@ -15,10 +15,11 @@ oraz `chat-backend/KONTRAKT.md` §5.
 brzegowych nazw. Łańcuch **rozmowa → autorstwo → wykonanie → odczyt → widoczny wynik** działa
 w przeglądarce, na żywej aplikacji, przez warstwę polityki.
 
-Dwie rzeczy **nie są domknięte moim kodem i nie udaję, że są**: moduł sesji T1 nie istniał
-w chwili pisania (E2E przeszło na zastępniku trzymanym **poza repozytorium**), a `docker-compose.yml`
-i `proxy/Caddyfile` należą do T1 — moje stanowisko probne odtwarza je na portach 96xx, ale
-nie jest nimi. Pełna lista w §7.
+Moduł sesji T1 (`chat-backend/sesja/`) wylądował w trakcie tej pracy i **podpięcie jest
+potwierdzone wykonaniem** — cały zestaw 43 sprawdzeń przeszedł na jego prawdziwej
+implementacji, z bramą sesji obejmującą także ścieżkę silnika (`forward_auth`).
+Niedomknięte zostaje to, że `docker-compose.yml` i `proxy/Caddyfile` należą do T1 — moje
+stanowisko probne odtwarza je na portach 96xx, ale nie jest nimi. Pełna lista w §7.
 
 ---
 
@@ -198,6 +199,10 @@ wiadomości wpisywane w pole czatu, wynik czytany z DOM. Stanowisko: §8.
 | 03 — czerwony przebieg, błąd ramki, wylogowanie | 8 | **8/8** |
 | 04 — nawigacja **kliknięciem** w UI silnika | 4 | **4/4** |
 | 05 — zmiana identyfikatora i stary deep-link | 4 | **4/4** |
+| **razem** | **43** | **43/43** |
+
+Ostatni przebieg wykonany na **prawdziwym module sesji T1** (`chat-backend/sesja/index.mjs`,
+`SESJA_HASLO` / `SESJA_ORIGIN` / `SESJA_TTL_H`) i z `forward_auth` na `/dagu*`.
 
 ### E1 — rozmowa → autorstwo → wykonanie → odczyt → widoczny wynik
 
@@ -392,7 +397,7 @@ Zrzut: `docs/t3-blad-ramki.png` (sąsiedni przypadek). Wejście w ramce na
 ```
 klik "Wyloguj"
   -> {"formularz":true,"ramka":false,"czat":false,"sentinel":null}
-POST /api/chat  ->  401 {"error":"Wymagana sesja. Zaloguj sie i sprobuj ponownie."}
+POST /api/chat  ->  401 {"error":"wymagana sesja operatora — zaloguj sie"}
 ```
 
 Ramka **znika**, nie zostaje pusta ani z 401 wyrenderowanym w środku. Sentinel silnika
@@ -465,6 +470,7 @@ Kolumna **Skąd** mówi, czy różnica wynika z decyzji, czy jest moim wyborem.
 | 16 | Panel boczny: przycisk „Wyloguj", zmieniona notka | konsekwencja 3–5 | nie |
 | 17 | `chat-backend/Dockerfile` kopiuje cały katalog zamiast listy plików | konieczność: `sesja/` T1 dochodzi osobno | nie |
 | 18 | `kontrakty/` **nie są** w obrazie — muszą być montowane wolumenem | konieczność: kontekst budowania to `./chat-backend` | nie, ale patrz §7 |
+| 19 | Rozmowy z innej sesji operatora **nie da się wznowić** — `403` | decyzja §13.3 S3, `sesja/KONTRAKT.md` §1.3 | nie — wcześniej `/api/chat` nie miał żadnej sesji, więc nie było czego wiązać |
 
 **Co zostało nietknięte, bo miało zostać:** ciągłość wątku (`--resume`, `sessionId`), harness
 `claude -p`, `--output-format json`, obsługa poświadczeń i ich odświeżania, kolejność
@@ -475,29 +481,20 @@ w `iframe` na tym samym originie.
 
 ## 7. Czego NIE domknąłem
 
-1. **Moduł sesji T1 nie istniał w chwili pisania.** `chat-backend/sesja/` to nadal pusty
-   punkt zaczepienia. `chat-backend/brama-sesji.mjs` jest adapterem **fail-closed**: bez
-   modułu każde żądanie dostaje `401`. Wszystkie dowody sesyjne (§5.5, odbiór 6) przeszły na
-   **zastępniku trzymanym poza repozytorium**, w katalogu roboczym stanowiska. Powierzchnia,
-   której adapter oczekuje, jest wypisana w `OCZEKIWANA_POWIERZCHNIA` w tym pliku i uzgodniona
-   z koordynatorem:
-   * `GET /api/sesja` → `{zalogowany}` (otwarta), `POST /api/sesja/logowanie` (otwarta),
-     `POST /api/sesja/wylogowanie` (unieważnia **serwerowo**), `GET /api/sesja/weryfikacja`
-     (cel `forward_auth` Caddy'ego),
-   * `sprawdz(req)` zwraca `403` przy obcym Origin, `401` przy braku sesji — to dwa różne błędy.
-
-   **Jeśli T1 nazwie trasy inaczej, frontend trafi w pustkę.** Trasy są w jednej stałej:
-   `TRASY_SESJI` w `frontend/src/sesja.ts`.
+1. **Moduł sesji T1 jest podpięty i przetestowany** (§9) — ten punkt jest zamknięty.
+   Zostaje jedno założenie: trasy sesji żyją w aplikacji w jednej stałej `TRASY_SESJI`
+   (`frontend/src/sesja.ts`) i w `OCZEKIWANA_POWIERZCHNIA` (`chat-backend/brama-sesji.mjs`).
+   Zmiana nazw po stronie T1 wymaga poprawki w tych dwóch miejscach i nigdzie indziej.
 
 2. **`docker-compose.yml` i `proxy/Caddyfile` są T1.** Moje stanowisko (§8) odtwarza je na
-   portach 96xx, ale to nie są te pliki. Do potwierdzenia po stronie T1:
-   * montaż `./kontrakty:/app/kontrakty:ro` — **bez niego backend nie wstanie** (brak rejestru),
+   portach 96xx, ale to nie są te pliki. Trzy rzeczy do potwierdzenia **w tamtych plikach**,
+   bo u mnie działają, a nie ja je utrzymuję:
+   * montaż `./kontrakty:/app/kontrakty:ro` — **bez niego backend nie wstanie** (brak rejestru);
    * `DAGU_BASE_YAML` wskazujące read-only na `base.yaml` silnika — bez tego droga obejścia
-     z `KONTRAKT.md` §4.7 (podmiana pliku bazowego) zostaje otwarta,
-   * trwały, zapisywalny wolumen na `ZEZWOLENIA_PLIK`,
-   * `forward_auth` na `/dagu*` — u mnie nie ma go w Caddyfile stanowiska, więc **teza
-     „`/dagu*` bez sesji daje 401" nie jest przeze mnie potwierdzona wykonaniem**. Sprawdzona
-     jest tylko strona aplikacji: ramka nie montuje się, dopóki `/api/sesja` nie potwierdzi sesji.
+     z `KONTRAKT.md` §4.7 (podmiana pliku bazowego) zostaje otwarta. Koordynator zlecił to T1
+     po moim zgłoszeniu; u mnie jest zamontowane i bramka z niego korzysta;
+   * trwały, zapisywalny wolumen na `ZEZWOLENIA_PLIK` — zezwolenia mają przeżyć `recreate`;
+   * `DAGU_MCP_URL` **prosto do silnika**, nigdy przez proxy — powód i dowód w §9.3.
 
 3. **E5 (restart + ręczny retry) i E7 (wycofanie) to zadania T5** — nie dublowałem ich.
    Zrobiłem wycinek E5 od strony backendu (§5.7), bo trafiłem na niego błędem.
@@ -559,3 +556,57 @@ w konfiguracji Caddy'ego.
 11. **Bez zamontowanych `kontrakty/` backend nie wstaje** — świadomie, fail-closed: warstwa
     polityki bez rejestru nie ma czego egzekwować. Komunikat startowy mówi wprost, czego
     brakuje i co ma zrobić compose.
+
+---
+
+## 9. Podpięcie modułu sesji T1 — potwierdzone wykonaniem
+
+Moduł T1 wylądował po tym, jak backend był już napisany. Powierzchnia z
+`chat-backend/brama-sesji.mjs` zgodziła się z `chat-backend/sesja/KONTRAKT.md` **co do znaku** —
+`utworzBrameSesji(opcje)` → `{obsluz, sprawdz}`, trasy `/api/sesja`, `/api/sesja/logowanie`,
+`/api/sesja/wylogowanie`, `/api/sesja/weryfikacja`. Zastępnik ze stanowiska został usunięty
+z montażu; ostatni przebieg testów jechał na prawdziwym module.
+
+### 9.1 Brama obejmuje cały origin, także UI silnika
+
+```
+GET  /dagu/dags            bez sesji  ->  HTTP 401   (forward_auth, NIE przekierowanie)
+POST /api/sesja/logowanie             ->  HTTP 200 {"ok":true,"wygasa":1789794858964}
+GET  /dagu/dags            z sesją    ->  HTTP 200
+GET  /                     bez sesji  ->  HTTP 200   (sama aplikacja musi się załadować)
+GET  /api/sesja            bez sesji  ->  {"zalogowany":false,"wygasa":null}
+POST /api/chat             bez sesji  ->  HTTP 401 {"error":"wymagana sesja operatora — zaloguj sie"}
+```
+
+401, a nie 302 — decyzja koordynatora, z którą się zgadzam: przekierowanie wyrenderowałoby
+formularz logowania **wewnątrz ramki**, czyli okno udające silnik, do którego operator wpisuje
+hasło. Frontend i tak nie montuje ramki, dopóki `/api/sesja` nie potwierdzi sesji, więc
+tego 401 operator nigdy nie widzi jako zepsutej ramki.
+
+### 9.2 Wiązanie rozmowy z sesją (§13.3 S3)
+
+`KONTRAKT.md` T1 §1.3 wymaga tego od `server.mjs`, bo moduł sesji nie widzi ciała żądania,
+a `sessionId` przychodzi właśnie tam i idzie prosto do `claude --resume`. Wpięte:
+`czyRozmowaNalezy()` przed uruchomieniem modelu, `zwiazRozmowe()` po powrocie. Dowód —
+identyfikator rozmowy z **poprzedniej** sesji operatora, użyty po ponownym zalogowaniu:
+
+```
+sessionId z poprzedniej sesji: 79e19fb3-2e0a-42cb-abe7-c117cf1969d3
+POST /api/chat  ->  403 {"error":"Ta rozmowa należy do innej sesji."}
+```
+
+Odmowa zapada **przed** uruchomieniem modelu, więc cudza rozmowa nie kosztuje ani grosza.
+
+### 9.3 Znalezione przy okazji: MCP silnika nie może iść przez proxy
+
+Moje stanowisko początkowo kierowało `DAGU_MCP_URL` na `http://proxy/dagu/mcp`. Po założeniu
+`forward_auth` na `/dagu*` **backend stracił dostęp do silnika** — własne żądania MCP nie mają
+ciasteczka operatora, więc proxy odpowiadało 401, a aplikacja zaczęła mówić „Silnik odpowiedział
+401" na każde pytanie o proces.
+
+To potwierdza wykonaniem decyzję, którą T1 podjął w `docker-compose.yml`: `DAGU_MCP_URL` idzie
+**prosto do silnika**, z pominięciem proxy. Jest po temu drugi, ważniejszy powód niż sama brama:
+proxy podmienia `Authorization` na token administratora silnika (wariant B2), więc MCP puszczone
+przez proxy jechałoby **tokenem admina zamiast klucza agenta** `developer`/`mcp-only` — czyli
+zawężenie roli z audytu P5 przestałoby cokolwiek znaczyć. Po zmianie na `http://dagu:8080/dagu/mcp`
+wszystkie 43 sprawdzenia przechodzą.
