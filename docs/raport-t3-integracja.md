@@ -489,7 +489,11 @@ w `iframe` na tym samym originie.
 2. **`docker-compose.yml` i `proxy/Caddyfile` są T1.** Moje stanowisko (§8) odtwarza je na
    portach 96xx, ale to nie są te pliki. Trzy rzeczy do potwierdzenia **w tamtych plikach**,
    bo u mnie działają, a nie ja je utrzymuję:
-   * montaż `./kontrakty:/app/kontrakty:ro` — **bez niego backend nie wstanie** (brak rejestru);
+   * montaż `./kontrakty:/app/kontrakty:ro` — **bez niego backend nie wstanie** (brak rejestru).
+     Jest w `docker-compose.yml` T1 i działa, ale komentarz obok niego mówi „obraz ma własną
+     kopię jako wartość domyślną" — **nie ma jej**. Kontekst budowania to `./chat-backend`,
+     więc `kontrakty/` z korzenia repozytorium są stamtąd niewidoczne i `COPY` ich nie weźmie.
+     Montaż nie jest zapasowy, tylko obowiązkowy; komentarz wymaga poprawki po stronie T1;
    * `DAGU_BASE_YAML` wskazujące read-only na `base.yaml` silnika — bez tego droga obejścia
      z `KONTRAKT.md` §4.7 (podmiana pliku bazowego) zostaje otwarta. Koordynator zlecił to T1
      po moim zgłoszeniu; u mnie jest zamontowane i bramka z niego korzysta;
