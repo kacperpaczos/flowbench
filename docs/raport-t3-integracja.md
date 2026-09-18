@@ -645,6 +645,12 @@ wynik widoczny w UI silnika
 W ramce widać identyfikatory T1: użytkownik `proxy-ui` (wariant B2 — tożsamość dokłada
 proxy) i `Actor agent-mcp` przy przebiegu (klucz agenta `developer`/`mcp-only`).
 
+`./dags` jest w prawdziwym układzie bind-mountem, więc proces napisany przez model
+**wylądował w repozytorium** jako `dags/wartosc-pozycji.yaml` — dokładnie tak, jak zakłada
+§4.2 („mapowanie jedzie razem z definicją do Gita"). Ponieważ `dags/**` należy do T4,
+a to był mój proces testowy, **usunąłem go po przebiegu**; w silniku zostało sześć procesów
+T4 i nic mojego.
+
 ### 10.1 Blokada znaleziona na prawdziwym układzie: pusty `base.yaml` wywracał każdy zapis
 
 Pierwsze podejście **nie przeszło** i warto to zapisać dokładnie, bo dotyczyłoby także
