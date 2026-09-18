@@ -1,0 +1,236 @@
+{
+  "_kontekst": {
+    "workflowId": "UQeWUmSDcg9gKXXY",
+    "nazwaN8n": "Lista produktow i suma zamowienia",
+    "dagRoboczy": "lista-produktow-suma-zamowienia",
+    "wykonanie": 4,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-14 21:15:34.199",
+    "zakonczone": "2026-09-14 21:15:34.268",
+    "versionIdWykonania": "afec6bbd-14c2-4164-b502-64d3f6a3dd4e",
+    "versionIdBiezacy": "afec6bbd-14c2-4164-b502-64d3f6a3dd4e",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.3",
+    "znacznikEkstrakcji": "2026-09-18T18:08:36Z"
+  },
+  "_zrodlo": {
+    "opis": "Wynik KAZDEGO wezla wykonania wzorcowego, w kolejnosci wykonania. Sluzy do lokalizowania roznicy miedzy DAG-iem a n8n na konkretnym kroku, a nie tylko na koncu procesu.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 4",
+    "sciezka": "resultData.runData[*][0].data.main[0][*].json"
+  },
+  "liczbaWezlow": 3,
+  "kolejnoscWezlow": [
+    "Start",
+    "Lista produktow",
+    "Policz sume zamowienia"
+  ],
+  "kroki": [
+    {
+      "pozycja": 0,
+      "wezel": "Start",
+      "typ": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "rolaWGrafie": "wyzwalacz",
+      "zrodloPoprzedniegoWezla": [],
+      "statusWezla": "success",
+      "czasWykonaniaMs": 3,
+      "liczbaElementow": 1,
+      "elementy": [
+        {}
+      ],
+      "kopertyN8n": [
+        {
+          "item": 0
+        }
+      ],
+      "typy": {
+        "[]": "object"
+      },
+      "precyzjaLiczb": {},
+      "poleDolozonePrzezTenWezel": [],
+      "poleZgubionePrzezTenWezel": []
+    },
+    {
+      "pozycja": 1,
+      "wezel": "Lista produktow",
+      "typ": "n8n-nodes-base.set",
+      "typeVersion": 3.5,
+      "rolaWGrafie": "wejscie",
+      "zrodloPoprzedniegoWezla": [
+        "Start"
+      ],
+      "statusWezla": "success",
+      "czasWykonaniaMs": 5,
+      "liczbaElementow": 1,
+      "elementy": [
+        {
+          "orderId": "ZAM-2026-001",
+          "currency": "PLN",
+          "items": [
+            {
+              "sku": "P-001",
+              "name": "Klawiatura mechaniczna",
+              "unitPrice": 349.99,
+              "quantity": 1
+            },
+            {
+              "sku": "P-002",
+              "name": "Mysz bezprzewodowa",
+              "unitPrice": 129.5,
+              "quantity": 2
+            },
+            {
+              "sku": "P-003",
+              "name": "Podkladka pod mysz XL",
+              "unitPrice": 59,
+              "quantity": 3
+            }
+          ]
+        }
+      ],
+      "kopertyN8n": [
+        {
+          "item": 0
+        }
+      ],
+      "typy": {
+        "[]": "object",
+        "[].currency": "string",
+        "[].items": "array",
+        "[].items[]": "object",
+        "[].items[].name": "string",
+        "[].items[].quantity": "integer",
+        "[].items[].sku": "string",
+        "[].items[].unitPrice": [
+          "integer",
+          "number"
+        ],
+        "[].orderId": "string"
+      },
+      "precyzjaLiczb": {
+        "[].items[].quantity": 0,
+        "[].items[].unitPrice": [
+          0,
+          1,
+          2
+        ]
+      },
+      "poleDolozonePrzezTenWezel": [
+        "currency",
+        "items",
+        "orderId"
+      ],
+      "poleZgubionePrzezTenWezel": []
+    },
+    {
+      "pozycja": 2,
+      "wezel": "Policz sume zamowienia",
+      "typ": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "rolaWGrafie": "wyjscie",
+      "zrodloPoprzedniegoWezla": [
+        "Lista produktow"
+      ],
+      "statusWezla": "success",
+      "czasWykonaniaMs": 24,
+      "liczbaElementow": 1,
+      "elementy": [
+        {
+          "orderId": "ZAM-2026-001",
+          "currency": "PLN",
+          "lines": [
+            {
+              "sku": "P-001",
+              "name": "Klawiatura mechaniczna",
+              "unitPrice": 349.99,
+              "quantity": 1,
+              "lineTotal": 349.99
+            },
+            {
+              "sku": "P-002",
+              "name": "Mysz bezprzewodowa",
+              "unitPrice": 129.5,
+              "quantity": 2,
+              "lineTotal": 259
+            },
+            {
+              "sku": "P-003",
+              "name": "Podkladka pod mysz XL",
+              "unitPrice": 59,
+              "quantity": 3,
+              "lineTotal": 177
+            }
+          ],
+          "itemCount": 3,
+          "unitsTotal": 6,
+          "subtotal": 785.99,
+          "vatRate": 0.23,
+          "vat": 180.78,
+          "total": 966.77
+        }
+      ],
+      "kopertyN8n": [
+        {
+          "item": 0
+        }
+      ],
+      "typy": {
+        "[]": "object",
+        "[].currency": "string",
+        "[].itemCount": "integer",
+        "[].lines": "array",
+        "[].lines[]": "object",
+        "[].lines[].lineTotal": [
+          "integer",
+          "number"
+        ],
+        "[].lines[].name": "string",
+        "[].lines[].quantity": "integer",
+        "[].lines[].sku": "string",
+        "[].lines[].unitPrice": [
+          "integer",
+          "number"
+        ],
+        "[].orderId": "string",
+        "[].subtotal": "number",
+        "[].total": "number",
+        "[].unitsTotal": "integer",
+        "[].vat": "number",
+        "[].vatRate": "number"
+      },
+      "precyzjaLiczb": {
+        "[].itemCount": 0,
+        "[].lines[].lineTotal": [
+          0,
+          2
+        ],
+        "[].lines[].quantity": 0,
+        "[].lines[].unitPrice": [
+          0,
+          1,
+          2
+        ],
+        "[].subtotal": 2,
+        "[].total": 2,
+        "[].unitsTotal": 0,
+        "[].vat": 2,
+        "[].vatRate": 2
+      },
+      "poleDolozonePrzezTenWezel": [
+        "itemCount",
+        "lines",
+        "subtotal",
+        "total",
+        "unitsTotal",
+        "vat",
+        "vatRate"
+      ],
+      "poleZgubionePrzezTenWezel": [
+        "items"
+      ]
+    }
+  ]
+}

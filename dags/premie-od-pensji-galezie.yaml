@@ -1,0 +1,257 @@
+# n8n `aEUUAnNsUr7LJIyr` "Premie 8% od pensji"  ->  DAG `premie-od-pensji-galezie`
+#
+# WARIANT B z decyzji par. 10.1 — PRZYPADEK ODBIORCZY FAZY 1.
+#
+# JAWNIE: GRAF JEST INNY NIZ W n8n. To nie jest odtworzenie procesu, tylko jego
+# PRZEPROJEKTOWANIE. W n8n warunek na stawke podatku byl wyrazeniem wewnatrz
+# jednego wezla `set`; silnik nie widzial zadnej galezi, graf byl liniowy, 7 wezlow
+# w jednym ciagu. Tutaj warunek jest wyniesiony do `preconditions`, zbior pracownikow
+# jest dzielony na dwie sciezki i skladany fan-inem. n8n NIGDY tego zbioru nie dzielil.
+#
+# Przedstawianie tego pliku jako "odtworzenia procesu" jest zakazane przez W-3
+# (decyzja par. 7.1). Wiernosci liczb dowodzi `premie-od-pensji.yaml` (wariant A).
+#
+# Wymagania par. 10, ktore ten DAG spelnia:
+#   * >= 3 zalezne kroki                — 7 krokow, kazdy czyta wynik poprzedniego
+#   * rozgalezienie zalezne od danych   — `podatek_wysoki` / `podatek_niski`,
+#                                         bramka liczona z zawartosci zbioru
+#   * fan-in                            — `suma_premii` zbiera obie galezie
+#   * zaden krok nie wola LLM           — same skrypty `jq`; zero `type: agent`,
+#                                         zero `harness.run`, zero `llm:`
+name: premie-od-pensji-galezie
+description: "Premie 8% od pensji — wariant B (rozgałęzienie + fan-in; graf INNY niż w n8n)."
+group: migracja-n8n
+labels: [migracja-n8n, faza-1, wariant-b, przypadek-odbiorczy]
+
+env:
+  SKRYPTY: /var/lib/dagu/dags/skrypty
+  PROG_PODATKOWY: "10000"
+
+steps:
+  - id: dane_pracownikow
+    name: "Dane pracownikow"
+    run: "$SKRYPTY/premie-dane-pracownikow.sh"
+    output: PRACOWNICY
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [imie, stanowisko, pensja]
+            properties:
+              imie:       {type: string}
+              stanowisko: {type: string}
+              pensja:     {type: number}
+
+  - id: premia_8_procent
+    name: "Premia 8%"
+    depends: [dane_pracownikow]
+    run: "$SKRYPTY/premie-premia-8-procent.sh"
+    output: Z_PREMIA
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [imie, stanowisko, pensja, stawkaPremii, premia]
+            properties:
+              imie:         {type: string}
+              stanowisko:   {type: string}
+              pensja:       {type: number}
+              stawkaPremii: {type: number}
+              premia:       {type: number}
+
+  - id: dodatek_50_zl
+    name: "Dodatek 50 zl"
+    depends: [premia_8_procent]
+    run: "$SKRYPTY/premie-dodatek-50-zl.sh"
+    output: Z_DODATKIEM
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [imie, stanowisko, pensja, stawkaPremii, premia,
+                       dodatek, premiaRazem, pensjaZPremia]
+            properties:
+              imie:          {type: string}
+              stanowisko:    {type: string}
+              pensja:        {type: number}
+              stawkaPremii:  {type: number}
+              premia:        {type: number}
+              dodatek:       {type: number}
+              premiaRazem:   {type: number}
+              pensjaZPremia: {type: number}
+
+  # --- rozgalezienie: TO NIE MA ODPOWIEDNIKA W n8n -------------------------------
+  - id: rozdziel_progiem
+    name: "Rozdziel progiem 10000"
+    description: "Krok bez odpowiednika w n8n — dzieli zbior na dwie sciezki"
+    depends: [dodatek_50_zl]
+    run: "$SKRYPTY/premie-rozdziel-progiem.sh"
+    output: ROZDZIAL
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [progPodatkowy, powyzej, ponizej, liczbaPowyzej, liczbaPonizej]
+      properties:
+        progPodatkowy: {type: number}
+        liczbaPowyzej: {type: integer}
+        liczbaPonizej: {type: integer}
+        powyzej: &zbior
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [_pozycja, imie, stanowisko, pensja, stawkaPremii, premia,
+                       dodatek, premiaRazem, pensjaZPremia]
+            properties:
+              _pozycja:      {type: integer}
+              imie:          {type: string}
+              stanowisko:    {type: string}
+              pensja:        {type: number}
+              stawkaPremii:  {type: number}
+              premia:        {type: number}
+              dodatek:       {type: number}
+              premiaRazem:   {type: number}
+              pensjaZPremia: {type: number}
+        ponizej: *zbior
+
+  # Bramka o slownictwie zamknietym — zadnego znaku z danych. Patrz komentarz
+  # w skrypcie: `preconditions` nie korzystaja z kanalu K4 i wklejaja wartosc
+  # do tekstu polecenia, wiec dane nie moga do nich trafic.
+  - id: bramka_galezi
+    name: "Bramka galezi"
+    depends: [rozdziel_progiem]
+    run: "$SKRYPTY/premie-bramka-galezi.sh"
+    output: BRAMKA
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [galazPowyzej, galazPonizej]
+      properties:
+        galazPowyzej: {type: string, enum: ["tak", "nie"]}
+        galazPonizej: {type: string, enum: ["tak", "nie"]}
+
+  # `continue_on: {skipped: true}` na OBU galeziach. Bez tego pominieta galaz
+  # blokuje fan-in i `suma_premii` konczy sie `skipped (upstream skipped)` [D13].
+  - id: podatek_wysoki
+    name: "Podatek 32% (powyzej progu)"
+    depends: [rozdziel_progiem, bramka_galezi]
+    preconditions:
+      - condition: "${BRAMKA}"
+        expected: 're:"galazPowyzej":"tak"'
+    continue_on: {skipped: true}
+    env:
+      GALAZ: powyzej
+      STAWKA: "0.32"
+    run: "$SKRYPTY/premie-galaz-podatek.sh"
+    output: WYSOKI
+    output_schema: &galaz
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [_pozycja, imie, stanowisko, pensja, stawkaPremii, premia,
+                       dodatek, premiaRazem, pensjaZPremia,
+                       progPodatkowy, stawkaPodatku, podatek, naDoReke]
+            properties:
+              _pozycja:      {type: integer}
+              imie:          {type: string}
+              stanowisko:    {type: string}
+              pensja:        {type: number}
+              stawkaPremii:  {type: number}
+              premia:        {type: number}
+              dodatek:       {type: number}
+              premiaRazem:   {type: number}
+              pensjaZPremia: {type: number}
+              progPodatkowy: {type: number}
+              stawkaPodatku: {type: number, enum: [0.12, 0.32]}
+              podatek:       {type: number}
+              naDoReke:      {type: number}
+
+  - id: podatek_niski
+    name: "Podatek 12% (do progu)"
+    depends: [rozdziel_progiem, bramka_galezi]
+    preconditions:
+      - condition: "${BRAMKA}"
+        expected: 're:"galazPonizej":"tak"'
+    continue_on: {skipped: true}
+    env:
+      GALAZ: ponizej
+      STAWKA: "0.12"
+    run: "$SKRYPTY/premie-galaz-podatek.sh"
+    output: NISKI
+    output_schema: *galaz
+
+  # --- fan-in --------------------------------------------------------------------
+  # Kolejnosc wynikow po rozdzieleniu NIE jest dana — skrypt sortuje po `_pozycja`
+  # przed zwinieciem i usuwa to pole sluzbowe, zeby wynik byl porownywalny z fixture
+  # co do kompletu pol.
+  - id: suma_premii
+    name: "Suma premii"
+    depends: [podatek_wysoki, podatek_niski]
+    run: "$SKRYPTY/premie-suma-galezie.sh"
+    output: WYNIK
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [liczbaPracownikow, sumaPensji, sumaPremii, sumaDodatkow,
+                       sumaPremiiRazem, sumaPodatku, sumaNaDoReke, szczegoly]
+            properties:
+              liczbaPracownikow: {type: integer}
+              sumaPensji:        {type: number}
+              sumaPremii:        {type: number}
+              sumaDodatkow:      {type: number}
+              sumaPremiiRazem:   {type: number}
+              sumaPodatku:       {type: number}
+              sumaNaDoReke:      {type: number}
+              szczegoly:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [imie, pensja, premia, dodatek, premiaRazem,
+                             stawkaPodatku, podatek, naDoReke]
+                  properties:
+                    imie:          {type: string}
+                    pensja:        {type: number}
+                    premia:        {type: number}
+                    dodatek:       {type: number}
+                    premiaRazem:   {type: number}
+                    stawkaPodatku: {type: number, enum: [0.12, 0.32]}
+                    podatek:       {type: number}
+                    naDoReke:      {type: number}

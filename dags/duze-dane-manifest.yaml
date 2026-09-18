@@ -1,0 +1,117 @@
+# DAG pomocniczy — test wymagania K6 (decyzja par. 4.1).
+#
+# Nie odtwarza zadnego procesu z n8n. Sprawdza jedna rzecz: co sie dzieje, gdy wynik
+# kroku przekracza praktyczny sufit kroku.
+#
+# SUFITY SA DWA, NIE JEDEN — zmierzone wykonaniem na przypietej wersji:
+#
+#   131 072 B  (= 32 x PAGE_SIZE, MAX_ARG_STRLEN jadra)
+#       Prawdziwy sufit kanalu K1-K4. Wartosc `output:` jedzie do kroku ODBIERAJACEGO
+#       jako ZMIENNA SRODOWISKOWA, a pojedyncza zmienna nie moze byc dluzsza.
+#       126 684 B przechodzi, 131 884 B juz nie.
+#       Objaw: `fork/exec /usr/bin/sh: argument list too long` — i pada KROK ODBIERAJACY,
+#       nie ten, ktory wyprodukowal za duzy wynik.
+#
+#   1 048 576 B  (`max_output_size`, wartosc domyslna z `dagu schema dag`)
+#       Sufit samego przechwycenia stdout. Objaw: `sync |0: invalid argument`,
+#       pada krok PRODUKUJACY.
+#
+# Miedzy 128 KiB a 1 MiB jest pas, w ktorym krok produkujacy konczy sie ZIELONY,
+# a pada dopiero odbiorca — czyli blad pokazuje sie w niewlasciwym miejscu grafu.
+# Decyzja par. 7.2 L5 mowi o sufitcie 1 MiB; dla danych przekraczajacych granice kroku
+# realny sufit jest OSIEM RAZY nizszy. Dlatego ten DAG istnieje.
+#
+# K6 mowi: taki wynik NIE jedzie zmienna, tylko artefaktem, a granice kroku przekracza
+# MANIFEST — maly dokument objety K1-K4, niosacy sciezke wzgledem katalogu artefaktow,
+# rozmiar i sume kontrolna. I dalej: "Walidacja manifestu NIE JEST walidacja zawartosci
+# pliku; zawartosc waliduje krok odbierajacy, osobno."
+#
+# Ten DAG rozdziela te dwie walidacje na DWA OSOBNE KROKI, zeby roznica byla widoczna,
+# a nie deklarowana:
+#   * `sprawdz_manifest`  — patrzy wylacznie na sciezke, rozmiar i sume kontrolna;
+#   * `waliduj_zawartosc` — otwiera plik i sprawdza deklaracje, ktorych manifest
+#                           udowodnic nie moze (liczba rekordow, typy pol, suma wartosci).
+#
+# Parametr USZKODZ=tak psuje ZAWARTOSC pliku, ale rozmiar i sume liczy z pliku
+# faktycznie zapisanego. Manifest jest wtedy wewnetrznie spojny i przechodzi
+# `sprawdz_manifest`, a `waliduj_zawartosc` go odrzuca. To jest dowod, ze jedno
+# nie zastepuje drugiego.
+name: duze-dane-manifest
+description: "Duże dane przez manifest — test K6 (artefakt + manifest, dwie rozłączne walidacje)."
+group: migracja-n8n
+labels: [migracja-n8n, faza-1, k6]
+
+# Natywny katalog artefaktow Dagu. Przy `enabled: true` silnik wstrzykuje krokom
+# zmienna DAG_RUN_ARTIFACTS_DIR — sprawdzone wykonaniem.
+artifacts:
+  enabled: true
+
+params:
+  - REKORDY: "50000"
+  - USZKODZ: "nie"
+
+env:
+  SKRYPTY: /var/lib/dagu/dags/skrypty
+
+steps:
+  - id: generuj
+    name: "Generuj artefakt"
+    description: "Zapisuje duzy plik JSON i emituje MALY manifest na stdout"
+    env:
+      DAGU_ARTEFAKTY: "${DAG_RUN_ARTIFACTS_DIR}"
+      REKORDY: "${REKORDY}"
+      USZKODZ: "${USZKODZ}"
+    run: "$SKRYPTY/duze-generuj.sh"
+    output: MANIFEST
+    # Manifest jest objety K1-K4 jak kazdy inny wynik. Schemat opisuje MANIFEST,
+    # a nie zawartosc pliku — i to jest cala roznica, ktorej ten DAG dowodzi.
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [sciezka, rozmiarB, sha256, liczbaRekordow, sumaWartosci]
+      properties:
+        sciezka:        {type: string, pattern: "^[a-z0-9][a-z0-9/._-]*$"}
+        rozmiarB:       {type: integer, minimum: 1}
+        sha256:         {type: string, pattern: "^[0-9a-f]{64}$"}
+        liczbaRekordow: {type: integer, minimum: 0}
+        sumaWartosci:   {type: integer, minimum: 0}
+
+  - id: sprawdz_manifest
+    name: "Walidacja manifestu"
+    description: "Sciezka, rozmiar, suma kontrolna. NIE otwiera zawartosci."
+    depends: [generuj]
+    env:
+      DAGU_ARTEFAKTY: "${DAG_RUN_ARTIFACTS_DIR}"
+    run: "$SKRYPTY/duze-sprawdz-manifest.sh"
+    output: MANIFEST_OK
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [sciezka, rozmiarB, sha256, zgodnyRozmiar, zgodnaSuma,
+                 zawartoscSprawdzona, uwaga]
+      properties:
+        sciezka:             {type: string}
+        rozmiarB:            {type: integer}
+        sha256:              {type: string, pattern: "^[0-9a-f]{64}$"}
+        zgodnyRozmiar:       {type: boolean}
+        zgodnaSuma:          {type: boolean}
+        # Zawsze false. Manifest nie moze powiedziec nic o zawartosci pliku.
+        zawartoscSprawdzona: {type: boolean, enum: [false]}
+        uwaga:               {type: string}
+
+  - id: waliduj_zawartosc
+    name: "Walidacja zawartosci"
+    description: "Otwiera artefakt i sprawdza deklaracje, ktorych manifest nie udowodnil"
+    depends: [sprawdz_manifest]
+    env:
+      DAGU_ARTEFAKTY: "${DAG_RUN_ARTIFACTS_DIR}"
+    run: "$SKRYPTY/duze-waliduj-zawartosc.sh"
+    output: ZAWARTOSC_OK
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [liczbaRekordow, sumaWartosci, zgodnaZDeklaracja]
+      properties:
+        liczbaRekordow:    {type: integer}
+        sumaWartosci:      {type: integer}
+        zgodnaZDeklaracja: {type: boolean, enum: [true]}

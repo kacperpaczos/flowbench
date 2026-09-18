@@ -1,0 +1,90 @@
+# n8n `UQeWUmSDcg9gKXXY` "Lista produktow i suma zamowienia"
+#   ->  DAG `lista-produktow-suma-zamowienia`
+#
+# Najlepsze dopasowanie z calej czworki: zrodlo JUZ bylo jednym dokumentem JSON
+# (wezel `set` w trybie `raw`), wiec przeniesienie pierwszego kroku jest 1:1.
+#
+# Fixture: fixtures/lista-produktow-suma-zamowienia/{wejscie,wezly-posrednie,oczekiwane-wyjscie}.json
+name: lista-produktow-suma-zamowienia
+description: "Lista produktów i suma zamówienia — dokument ZAM-2026-001, trzy pozycje, agregat."
+group: migracja-n8n
+labels: [migracja-n8n, faza-1]
+
+env:
+  SKRYPTY: /var/lib/dagu/dags/skrypty
+
+steps:
+  - id: lista_produktow
+    name: "Lista produktow"
+    description: "n8n: wezel `Lista produktow` (set, mode=raw, caly dokument jako jsonOutput)"
+    run: "$SKRYPTY/lista-produktow.sh"
+    output: ZAMOWIENIE
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [orderId, currency, items]
+            properties:
+              orderId:  {type: string}
+              currency: {type: string}
+              items:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [sku, name, unitPrice, quantity]
+                  properties:
+                    sku:       {type: string}
+                    name:      {type: string}
+                    unitPrice: {type: number}
+                    quantity:  {type: integer}
+
+  - id: policz_sume_zamowienia
+    name: "Policz sume zamowienia"
+    description: "n8n: wezel `Policz sume zamowienia` (code): lineTotal, subtotal, VAT 23%, total"
+    depends: [lista_produktow]
+    run: "$SKRYPTY/lista-policz-sume.sh"
+    output: WYNIK
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [orderId, currency, lines, itemCount, unitsTotal,
+                       subtotal, vatRate, vat, total]
+            properties:
+              orderId:  {type: string}
+              currency: {type: string}
+              lines:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [sku, name, unitPrice, quantity, lineTotal]
+                  properties:
+                    sku:       {type: string}
+                    name:      {type: string}
+                    unitPrice: {type: number}
+                    quantity:  {type: integer}
+                    lineTotal: {type: number}
+              itemCount:  {type: integer}
+              unitsTotal: {type: integer}
+              subtotal:   {type: number}
+              vatRate:    {type: number}
+              vat:        {type: number}
+              total:      {type: number}

@@ -1,0 +1,62 @@
+# n8n `ag3nCPjnADFqUADE` "Demo MCP - wartosc zamowienia"  ->  DAG `demo-mcp-wartosc-zamowienia`
+#
+# Kanoniczny dowod lancucha czat -> MCP -> proces -> wykonanie -> wynik (R02, R03, R14).
+# 3 wezly n8n (manualTrigger + set + code) -> 2 kroki: wyzwalacz przestaje byc wezlem.
+#
+# Fixture: fixtures/demo-mcp-wartosc-zamowienia/{wejscie,wezly-posrednie,oczekiwane-wyjscie}.json
+name: demo-mcp-wartosc-zamowienia
+description: "Demo MCP – wartość zamówienia — jedna pozycja, VAT 23%, zaokrąglenie do groszy."
+group: migracja-n8n
+labels: [migracja-n8n, faza-1]
+
+env:
+  SKRYPTY: /var/lib/dagu/dags/skrypty
+
+steps:
+  - id: pozycja_zamowienia
+    name: "Pozycja zamowienia"
+    description: "n8n: wezel `Pozycja zamowienia` (set, mode=manual, string + 2x number)"
+    run: "$SKRYPTY/demo-pozycja-zamowienia.sh"
+    output: POZYCJA
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [produkt, cenaNetto, ilosc]
+            properties:
+              produkt:   {type: string}
+              cenaNetto: {type: number}
+              ilosc:     {type: integer}
+
+  # `depends` jest tu krawedzia DANYCH, nie tylko kolejnosci: bez niej `$POZYCJA`
+  # byloby puste, a krok wykonalby sie i tak (audyt walidacji, par. 4.1).
+  - id: policz_wartosc_brutto
+    name: "Policz wartosc brutto"
+    description: "n8n: wezel `Policz wartosc brutto` (code, runOnceForAllItems, VAT 23%)"
+    depends: [pozycja_zamowienia]
+    run: "$SKRYPTY/demo-policz-wartosc-brutto.sh"
+    output: WYNIK
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [produkt, ilosc, netto, brutto]
+            properties:
+              produkt: {type: string}
+              ilosc:   {type: integer}
+              netto:   {type: number}
+              brutto:  {type: number}

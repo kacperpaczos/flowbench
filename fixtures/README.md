@@ -1,13 +1,14 @@
 # `fixtures/` — materiał dowodowy wyjęty z silnika n8n
 
 Data ekstrakcji: **2026-09-18**. Faza 1 zastąpienia n8n przez Dagu.
-Dokument nadrzędny: `docs/rejestr-workflow.md` (sekcja 7 opisuje samą ekstrakcję).
+Dokument nadrzędny: `docs/rejestr-workflow.md` — sekcja 7 opisuje samą ekstrakcję,
+sekcja 8 przepisanie procesów na DAG-i i porównanie wyników.
 
 Ten katalog jest **fotografią, nie projektem**. Zawiera definicje procesów i wyniki ich
 wykonań przepisane z żywej bazy n8n, żeby po wyłączeniu silnika dało się sprawdzić, czy
 nowa implementacja liczy to samo. **Nie ma tu ani jednego DAG-a Dagu i ani jednego YAML-a** —
-kontrakt danych dla Dagu jest w chwili ekstrakcji jeszcze otwarty, a napisanie plików
-przed jego domknięciem oznaczałoby pracę do wyrzucenia.
+to jest materiał odniesienia, nie implementacja. Implementacja leży w `dags/`
+i jest z tym katalogiem porównywana skryptem `_narzedzia/porownaj.py`.
 
 ---
 
@@ -47,12 +48,13 @@ fixtures/
 ├─ status-ok/                        # ← gnzjOf2qHJoEPeGo „Status OK”
 │  ├─ definicja-n8n.json
 │  ├─ wejscie.json
-│  └─ oczekiwane-wyjscie.json
+│  └─ oczekiwane-wyjscie.json        # (bez `wezly-posrednie.json` — patrz niżej)
 ├─ demo-mcp-wartosc-zamowienia/      # ← ag3nCPjnADFqUADE
 ├─ lista-produktow-suma-zamowienia/  # ← UQeWUmSDcg9gKXXY
 ├─ premie-od-pensji/                 # ← aEUUAnNsUr7LJIyr
 │  ├─ definicja-n8n.json
 │  ├─ wejscie.json
+│  ├─ wezly-posrednie.json           # wynik KAŻDEGO z siedmiu węzłów
 │  ├─ oczekiwane-wyjscie.json
 │  └─ wersje/                        # cztery wersje definicji z historii edycji przez czat
 │     ├─ 01-3b7f786f-….json
@@ -65,6 +67,7 @@ fixtures/
 └─ _narzedzia/
    ├─ ekstrakcja.py                  # skrypt, który wygenerował to drzewo
    ├─ weryfikuj.py                   # porównanie fixture z migawką i manifestem
+   ├─ porownaj.py                    # porównanie wyników DAG-ów Dagu z fixture
    ├─ flatted.py                     # dekoder formatu, w którym n8n trzyma dane wykonań
    └─ sprawdz-sumy.sh                # niezależne przeliczenie sha256 przez sha256sum(1)
 ```
@@ -83,6 +86,14 @@ Plik wypisuje je **jawnie**, w postaci, jaką przybrało w czasie wykonania, plu
 `gdzieZaszyteWDefinicji` (gdzie tego szukać w definicji), `deklaracjeTypowN8n` (deklaracja
 typu per pole — tylko dla węzłów `set` w trybie `manual`, bo tylko one ją mają), `typy`
 i `precyzjaLiczb`.
+
+**`wezly-posrednie.json`** — wynik **każdego** węzła wykonania wzorcowego, w kolejności
+wykonania. Powstaje tylko dla procesów o więcej niż jednym węźle wykonawczym; `status-ok`
+ma jeden węzeł `set` po wyzwalaczu, więc nie ma czego porównywać pośrednio i **pliku tam nie ma**.
+Bez tego pliku porównanie DAG-a z n8n mówi tylko „różni się", a nie „różni się na kroku
+`Stawka podatku`". Każdy krok ma dodatkowo `poleDolozonePrzezTenWezel`
+i `poleZgubionePrzezTenWezel` — to jest dokładnie ta informacja, której zabrakło przy
+`includeOtherFields: true`: widać, co dany krok musi wyemitować sam.
 
 **`oczekiwane-wyjscie.json`** — wynik **ostatniego wykonanego węzła** z migawki wykonania,
 bez upraszczania: te same pola, ta sama kolejność elementów i pól, te same typy, ta sama

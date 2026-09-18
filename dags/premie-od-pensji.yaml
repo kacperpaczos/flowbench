@@ -1,0 +1,214 @@
+# n8n `aEUUAnNsUr7LJIyr` "Premie 8% od pensji"  ->  DAG `premie-od-pensji`
+#
+# WARIANT A z decyzji par. 10.1 — WIERNOSC LICZB.
+# Warunek na stawke podatku zostaje wewnatrz `jq`, tak jak w n8n zostawal wewnatrz
+# jednego wezla `set`. Graf jest LINIOWY, dokladnie jak w n8n: silnik nie widzi tu
+# zadnej galezi. Ten plik dowodzi, ze zachowanie i liczby sa te same co w n8n —
+# i NIE jest przypadkiem odbiorczym par. 10. Tym jest `premie-od-pensji-galezie.yaml`.
+#
+# 7 wezlow n8n -> 6 krokow: wyzwalacz przestaje byc wezlem.
+#
+# Kazdy krok ma pelny `output_schema` z `required` i `additionalProperties: false`.
+# To nie jest ozdoba: n8n mial `includeOtherFields: true`, ktory sam przenosil pola
+# przez wezel. Tutaj kazdy krok musi wyemitowac caly dokument sam, a zgubione pole
+# zniknelo by po cichu. `required` zamienia ciche zgubienie w czerwony krok.
+#
+# Fixture: fixtures/premie-od-pensji/{wejscie,wezly-posrednie,oczekiwane-wyjscie}.json
+name: premie-od-pensji
+description: "Premie 8% od pensji — wariant A (wierność liczb, graf liniowy jak w n8n)."
+group: migracja-n8n
+labels: [migracja-n8n, faza-1, wariant-a]
+
+env:
+  SKRYPTY: /var/lib/dagu/dags/skrypty
+
+steps:
+  - id: dane_pracownikow
+    name: "Dane pracownikow"
+    description: "n8n: wezel `Dane pracownikow` (code) — zwracal 3 elementy strumienia"
+    run: "$SKRYPTY/premie-dane-pracownikow.sh"
+    output: PRACOWNICY
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [imie, stanowisko, pensja]
+            properties:
+              imie:       {type: string}
+              stanowisko: {type: string}
+              pensja:     {type: number}
+
+  - id: premia_8_procent
+    name: "Premia 8%"
+    description: "n8n: wezel `Premia 8%` (set, includeOtherFields: true)"
+    depends: [dane_pracownikow]
+    run: "$SKRYPTY/premie-premia-8-procent.sh"
+    output: Z_PREMIA
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [imie, stanowisko, pensja, stawkaPremii, premia]
+            properties:
+              imie:         {type: string}
+              stanowisko:   {type: string}
+              pensja:       {type: number}
+              stawkaPremii: {type: number}
+              premia:       {type: number}
+
+  - id: dodatek_50_zl
+    name: "Dodatek 50 zl"
+    description: "n8n: wezel `Dodatek 50 zl` (set x3 pola, includeOtherFields: true)"
+    depends: [premia_8_procent]
+    run: "$SKRYPTY/premie-dodatek-50-zl.sh"
+    output: Z_DODATKIEM
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [imie, stanowisko, pensja, stawkaPremii, premia,
+                       dodatek, premiaRazem, pensjaZPremia]
+            properties:
+              imie:          {type: string}
+              stanowisko:    {type: string}
+              pensja:        {type: number}
+              stawkaPremii:  {type: number}
+              premia:        {type: number}
+              dodatek:       {type: number}
+              premiaRazem:   {type: number}
+              pensjaZPremia: {type: number}
+
+  - id: stawka_podatku
+    name: "Stawka podatku"
+    description: "n8n: wezel `Stawka podatku` (set, wyrazenie warunkowe w jednym wezle)"
+    depends: [dodatek_50_zl]
+    run: "$SKRYPTY/premie-stawka-podatku.sh"
+    output: ZE_STAWKA
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [imie, stanowisko, pensja, stawkaPremii, premia,
+                       dodatek, premiaRazem, pensjaZPremia,
+                       progPodatkowy, stawkaPodatku]
+            properties:
+              imie:          {type: string}
+              stanowisko:    {type: string}
+              pensja:        {type: number}
+              stawkaPremii:  {type: number}
+              premia:        {type: number}
+              dodatek:       {type: number}
+              premiaRazem:   {type: number}
+              pensjaZPremia: {type: number}
+              progPodatkowy: {type: number}
+              # Stawka moze przyjac wylacznie jedna z dwoch wartosci — to jest ta
+              # czesc warunku z n8n, ktora DA SIE zapisac w kontrakcie.
+              stawkaPodatku: {type: number, enum: [0.12, 0.32]}
+
+  - id: podatek_dochodowy
+    name: "Podatek dochodowy"
+    description: "n8n: wezel `Podatek dochodowy` (set x2 pola, includeOtherFields: true)"
+    depends: [stawka_podatku]
+    run: "$SKRYPTY/premie-podatek-dochodowy.sh"
+    output: Z_PODATKIEM
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [imie, stanowisko, pensja, stawkaPremii, premia,
+                       dodatek, premiaRazem, pensjaZPremia,
+                       progPodatkowy, stawkaPodatku, podatek, naDoReke]
+            properties:
+              imie:          {type: string}
+              stanowisko:    {type: string}
+              pensja:        {type: number}
+              stawkaPremii:  {type: number}
+              premia:        {type: number}
+              dodatek:       {type: number}
+              premiaRazem:   {type: number}
+              pensjaZPremia: {type: number}
+              progPodatkowy: {type: number}
+              stawkaPodatku: {type: number, enum: [0.12, 0.32]}
+              podatek:       {type: number}
+              naDoReke:      {type: number}
+
+  - id: suma_premii
+    name: "Suma premii"
+    description: "n8n: wezel `Suma premii` (code, fan-in: sumy + tablica szczegoly)"
+    depends: [podatek_dochodowy]
+    run: "$SKRYPTY/premie-suma.sh"
+    output: WYNIK
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          maxItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [liczbaPracownikow, sumaPensji, sumaPremii, sumaDodatkow,
+                       sumaPremiiRazem, sumaPodatku, sumaNaDoReke, szczegoly]
+            properties:
+              liczbaPracownikow: {type: integer}
+              sumaPensji:        {type: number}
+              sumaPremii:        {type: number}
+              sumaDodatkow:      {type: number}
+              sumaPremiiRazem:   {type: number}
+              sumaPodatku:       {type: number}
+              sumaNaDoReke:      {type: number}
+              szczegoly:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [imie, pensja, premia, dodatek, premiaRazem,
+                             stawkaPodatku, podatek, naDoReke]
+                  properties:
+                    imie:          {type: string}
+                    pensja:        {type: number}
+                    premia:        {type: number}
+                    dodatek:       {type: number}
+                    premiaRazem:   {type: number}
+                    stawkaPodatku: {type: number, enum: [0.12, 0.32]}
+                    podatek:       {type: number}
+                    naDoReke:      {type: number}

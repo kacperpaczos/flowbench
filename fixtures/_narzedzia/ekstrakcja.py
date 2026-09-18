@@ -386,6 +386,74 @@ def zbuduj_proces(con, proces: dict, katalog: str, pliki: list) -> None:
         "sciezka": f'resultData.runData["{ostatni}"][0].data.main[0]',
     }))
 
+    # --- wezly posrednie ---
+    # Bez nich porownanie DAG-a z n8n powie tylko "rozni sie", a nie "rozni sie na kroku
+    # Stawka podatku". Plik powstaje tylko dla procesow o wiecej niz jednym wezle
+    # wykonawczym; dla `status-ok` (jeden `set` po wyzwalaczu) nie ma czego posrednio
+    # porownywac i pliku nie ma — to jest jawny brak, nie przeoczenie.
+    wykonawcze = [n for n in runs if wezly_def[n]["type"] != "n8n-nodes-base.manualTrigger"]
+    if len(wykonawcze) < 2:
+        return
+
+    kroki = []
+    for pozycja, nazwa in enumerate(runs):
+        payloady, koperty, przebieg = _elementy(runs, nazwa)
+        wezel = wezly_def[nazwa]
+        kroki.append({
+            "pozycja": pozycja,
+            "wezel": nazwa,
+            "typ": wezel["type"],
+            "typeVersion": wezel["typeVersion"],
+            "rolaWGrafie": ("wyzwalacz" if wezel["type"] == "n8n-nodes-base.manualTrigger"
+                            else "wejscie" if nazwa == nazwa_wej
+                            else "wyjscie" if nazwa == ostatni
+                            else "posredni"),
+            "zrodloPoprzedniegoWezla": [z.get("previousNode") for z in przebieg.get("source", [])
+                                        if z],
+            "statusWezla": przebieg["executionStatus"],
+            "czasWykonaniaMs": przebieg["executionTime"],
+            "liczbaElementow": len(payloady),
+            "elementy": payloady,
+            "kopertyN8n": koperty,
+            "typy": szkielet_typow(payloady),
+            "precyzjaLiczb": precyzja_liczb(payloady),
+            "poleDolozonePrzezTenWezel": None,
+        })
+
+    # Ktore pola dokladl kazdy krok wzgledem poprzedniego. To jest dokladnie ta informacja,
+    # ktorej zabraklo przy `includeOtherFields: true` — widac, co krok ma sam wyemitowac.
+    poprzednie: set = set()
+    for krok in kroki:
+        biezace = {k for el in krok["elementy"] if isinstance(el, dict) for k in el}
+        krok["poleDolozonePrzezTenWezel"] = sorted(biezace - poprzednie)
+        krok["poleZgubionePrzezTenWezel"] = sorted(poprzednie - biezace)
+        poprzednie = biezace
+
+    dok = {
+        "_kontekst": kontekst,
+        "_zrodlo": {
+            "opis": "Wynik KAZDEGO wezla wykonania wzorcowego, w kolejnosci wykonania. "
+                    "Sluzy do lokalizowania roznicy miedzy DAG-iem a n8n na konkretnym "
+                    "kroku, a nie tylko na koncu procesu.",
+            "tabela": "execution_data",
+            "kolumna": "data (format `flatted`)",
+            "wiersz": f"executionId = {eid}",
+            "sciezka": "resultData.runData[*][0].data.main[0][*].json",
+        },
+        "liczbaWezlow": len(kroki),
+        "kolejnoscWezlow": list(runs.keys()),
+        "kroki": kroki,
+    }
+    sciezka = os.path.join(baza, "wezly-posrednie.json")
+    _zapisz_json(sciezka, dok)
+    pliki.append((sciezka, {
+        "typ": "baza",
+        "tabela": "execution_data",
+        "kolumna": "data",
+        "wiersz": f"executionId = {eid}",
+        "sciezka": "resultData.runData[*][0].data.main[0]",
+    }))
+
 
 def zbuduj_wersje_premii(con, katalog: str, pliki: list) -> None:
     """Cztery wersje definicji `Premie 8% od pensji` z migawek wykonan (rejestr §1.1)."""
@@ -486,6 +554,7 @@ PLIKI_STATYCZNE = [
     ("_narzedzia/weryfikuj.py", "narzedzie", "weryfikacja fixture wobec migawki i manifestu"),
     ("_narzedzia/flatted.py", "narzedzie", "dekoder formatu `flatted` z execution_data.data"),
     ("_narzedzia/sprawdz-sumy.sh", "narzedzie", "niezalezne przeliczenie sha256 z manifestu"),
+    ("_narzedzia/porownaj.py", "narzedzie", "porownanie wynikow DAG-ow Dagu z fixture"),
 ]
 
 

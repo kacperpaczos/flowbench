@@ -9,7 +9,7 @@
     "wersjaBiezaca": true,
     "obecnaWWorkflowHistory": true,
     "sekcjaRejestru": "§1.1",
-    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    "znacznikEkstrakcji": "2026-09-18T18:08:36Z"
   },
   "_zrodlo": {
     "opis": "Pelna definicja procesu w chwili wykonania. Dla trzech wersji posrednich to JEDYNE miejsce, w ktorym przetrwaly: tabela workflow_history trzyma wylacznie stan biezacy.",

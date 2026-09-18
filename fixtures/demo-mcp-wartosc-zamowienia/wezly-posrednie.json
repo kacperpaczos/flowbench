@@ -1,0 +1,143 @@
+{
+  "_kontekst": {
+    "workflowId": "ag3nCPjnADFqUADE",
+    "nazwaN8n": "Demo MCP - wartosc zamowienia",
+    "dagRoboczy": "demo-mcp-wartosc-zamowienia",
+    "wykonanie": 3,
+    "statusWykonania": "success",
+    "trybWykonania": "manual",
+    "rozpoczete": "2026-09-14 19:11:58.755",
+    "zakonczone": "2026-09-14 19:11:58.874",
+    "versionIdWykonania": "c0bbe46e-6439-4e23-99ec-1d84ffbfa3cd",
+    "versionIdBiezacy": "c0bbe46e-6439-4e23-99ec-1d84ffbfa3cd",
+    "wykonanieZgodneZBiezacaDefinicja": true,
+    "sekcjaRejestru": "§4.2",
+    "znacznikEkstrakcji": "2026-09-18T18:08:36Z"
+  },
+  "_zrodlo": {
+    "opis": "Wynik KAZDEGO wezla wykonania wzorcowego, w kolejnosci wykonania. Sluzy do lokalizowania roznicy miedzy DAG-iem a n8n na konkretnym kroku, a nie tylko na koncu procesu.",
+    "tabela": "execution_data",
+    "kolumna": "data (format `flatted`)",
+    "wiersz": "executionId = 3",
+    "sciezka": "resultData.runData[*][0].data.main[0][*].json"
+  },
+  "liczbaWezlow": 3,
+  "kolejnoscWezlow": [
+    "Start",
+    "Pozycja zamowienia",
+    "Policz wartosc brutto"
+  ],
+  "kroki": [
+    {
+      "pozycja": 0,
+      "wezel": "Start",
+      "typ": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "rolaWGrafie": "wyzwalacz",
+      "zrodloPoprzedniegoWezla": [],
+      "statusWezla": "success",
+      "czasWykonaniaMs": 1,
+      "liczbaElementow": 1,
+      "elementy": [
+        {}
+      ],
+      "kopertyN8n": [
+        {
+          "item": 0
+        }
+      ],
+      "typy": {
+        "[]": "object"
+      },
+      "precyzjaLiczb": {},
+      "poleDolozonePrzezTenWezel": [],
+      "poleZgubionePrzezTenWezel": []
+    },
+    {
+      "pozycja": 1,
+      "wezel": "Pozycja zamowienia",
+      "typ": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "rolaWGrafie": "wejscie",
+      "zrodloPoprzedniegoWezla": [
+        "Start"
+      ],
+      "statusWezla": "success",
+      "czasWykonaniaMs": 7,
+      "liczbaElementow": 1,
+      "elementy": [
+        {
+          "produkt": "Kabel HDMI 2.1",
+          "cenaNetto": 49.99,
+          "ilosc": 3
+        }
+      ],
+      "kopertyN8n": [
+        {
+          "item": 0
+        }
+      ],
+      "typy": {
+        "[]": "object",
+        "[].cenaNetto": "number",
+        "[].ilosc": "integer",
+        "[].produkt": "string"
+      },
+      "precyzjaLiczb": {
+        "[].cenaNetto": 2,
+        "[].ilosc": 0
+      },
+      "poleDolozonePrzezTenWezel": [
+        "cenaNetto",
+        "ilosc",
+        "produkt"
+      ],
+      "poleZgubionePrzezTenWezel": []
+    },
+    {
+      "pozycja": 2,
+      "wezel": "Policz wartosc brutto",
+      "typ": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "rolaWGrafie": "wyjscie",
+      "zrodloPoprzedniegoWezla": [
+        "Pozycja zamowienia"
+      ],
+      "statusWezla": "success",
+      "czasWykonaniaMs": 76,
+      "liczbaElementow": 1,
+      "elementy": [
+        {
+          "produkt": "Kabel HDMI 2.1",
+          "ilosc": 3,
+          "netto": 149.97,
+          "brutto": 184.46
+        }
+      ],
+      "kopertyN8n": [
+        {
+          "item": 0
+        }
+      ],
+      "typy": {
+        "[]": "object",
+        "[].brutto": "number",
+        "[].ilosc": "integer",
+        "[].netto": "number",
+        "[].produkt": "string"
+      },
+      "precyzjaLiczb": {
+        "[].brutto": 2,
+        "[].ilosc": 0,
+        "[].netto": 2
+      },
+      "poleDolozonePrzezTenWezel": [
+        "brutto",
+        "netto"
+      ],
+      "poleZgubionePrzezTenWezel": [
+        "cenaNetto"
+      ]
+    }
+  ]
+}

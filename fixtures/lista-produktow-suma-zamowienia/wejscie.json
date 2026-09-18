@@ -12,7 +12,7 @@
     "versionIdBiezacy": "afec6bbd-14c2-4164-b502-64d3f6a3dd4e",
     "wykonanieZgodneZBiezacaDefinicja": true,
     "sekcjaRejestru": "§4.3",
-    "znacznikEkstrakcji": "2026-09-18T17:33:46Z"
+    "znacznikEkstrakcji": "2026-09-18T18:08:36Z"
   },
   "_zrodlo": {
     "opis": "Proces nie przyjmuje danych z zewnatrz: wyzwalaczem jest manualTrigger, ktory produkuje jeden pusty element. Faktyczne wejscie dziedzinowe jest ZASZYTE w pierwszym wezle produkujacym dane i tutaj wypisane jawnie.",
