@@ -18,8 +18,9 @@ w przeglądarce, na żywej aplikacji, przez warstwę polityki.
 Moduł sesji T1 (`chat-backend/sesja/`) wylądował w trakcie tej pracy i **podpięcie jest
 potwierdzone wykonaniem** — cały zestaw 43 sprawdzeń przeszedł na jego prawdziwej
 implementacji, z bramą sesji obejmującą także ścieżkę silnika (`forward_auth`).
-Niedomknięte zostaje to, że `docker-compose.yml` i `proxy/Caddyfile` należą do T1 — moje
-stanowisko probne odtwarza je na portach 96xx, ale nie jest nimi. Pełna lista w §7.
+Łańcuch przeszedł również na **prawdziwym układzie z repozytorium** (port 8080,
+`docker-compose.yml` i `proxy/Caddyfile` T1) — §10. Przy okazji wyszła tam blokada, która
+wywracała każdy zapis procesu; naprawiona (§10.1). Pełna lista tego, czego nie domknąłem, w §7.
 
 ---
 
@@ -526,7 +527,10 @@ w `iframe` na tym samym originie.
    i nie wolno mi go było ruszać. Skrypty (`e2e/*.mjs`, sterownik CDP bez zależności) leżą
    w katalogu roboczym stanowiska i mogą być przeniesione, gdy `tests/` się otworzy.
 
-9. **Katalog kontraktów w prompcie ma 17 KB.** Przy 22 kontraktach to działa i skróciło turę
+9. **Forma A kontraktu nie działa na prawdziwym układzie**, bo plik bazowy silnika jest pusty
+   (§10.1). Działa wyłącznie forma B. Wpisanie akcji do `base.yaml` to zadanie T1.
+
+10. **Katalog kontraktów w prompcie ma 17 KB.** Przy 22 kontraktach to działa i skróciło turę
    z >420 s do 40 s, ale przy kilkuset kontraktach trzeba będzie dać modelowi narzędzie
    „wypisz kontrakty" zamiast całej listy w prompcie. To wniosek dla T2, nie dług w moim kodzie.
 
@@ -551,13 +555,13 @@ i token administratora silnika żyją wyłącznie w katalogu roboczym stanowiska
 z audytu P4: przechwycone logowanie SPA zwraca sentinel, prawdziwy token jest tylko
 w konfiguracji Caddy'ego.
 
-10. **`/api/health` zostaje otwarte, bez sesji.** Tak było przed zmianą i tak zostawiam —
+11. **`/api/health` zostaje otwarte, bez sesji.** Tak było przed zmianą i tak zostawiam —
     to sonda zdrowia, a nie dane procesowe. Ujawnia stan poświadczeń modelu (`wazne`/`wygasle`)
     oraz to, czy moduł sesji jest podpięty. Przy wariancie B2 cały origin i tak stoi za sesją
     na proxy, więc w docelowym układzie ta trasa też będzie za `forward_auth`, chyba że T1
     świadomie ją wyłączy jako sondę. **Do rozstrzygnięcia przez T1, nie przeze mnie.**
 
-11. **Bez zamontowanych `kontrakty/` backend nie wstaje** — świadomie, fail-closed: warstwa
+12. **Bez zamontowanych `kontrakty/` backend nie wstaje** — świadomie, fail-closed: warstwa
     polityki bez rejestru nie ma czego egzekwować. Komunikat startowy mówi wprost, czego
     brakuje i co ma zrobić compose.
 
@@ -614,3 +618,55 @@ proxy podmienia `Authorization` na token administratora silnika (wariant B2), wi
 przez proxy jechałoby **tokenem admina zamiast klucza agenta** `developer`/`mcp-only` — czyli
 zawężenie roli z audytu P5 przestałoby cokolwiek znaczyć. Po zmianie na `http://dagu:8080/dagu/mcp`
 wszystkie 43 sprawdzenia przechodzą.
+
+---
+
+## 10. Przebieg na prawdziwym układzie z repozytorium
+
+`docker-compose.yml` i `proxy/Caddyfile` T1 wylądowały pod koniec tej pracy, a stack
+`n8niframe` już stał. Przebudowałem w nim **tylko swoje dwie usługi** (`chat-backend`,
+`frontend`) — inaczej odbiór T5 poszedłby na nieaktualnym obrazie mojego kodu — i puściłem
+ten sam łańcuch co scenariusz 01, na porcie 8080.
+
+Zrzut: `docs/t3-prawdziwy-uklad.png`
+
+```
+> Zrob proces o identyfikatorze wartosc-pozycji … Uruchom proces i podaj wynik.
+
+[bot] Proces wartosc-pozycji został zapisany i uruchomiony. Status z silnika: succeeded
+      (oba kroki succeeded), dag-run 034RALOZO1VA87Ys87GlUc.
+      Wynik końcowy: produkt kubek, ilosc 3, netto 74.70, brutto 91.88.
+      (47 s · szac. zużycie 0.31 USD · silnik: succeeded)
+
+4/4 sprawdzenia: bez błędu · ramka pokazuje wykonanie · nazwa polska obok identyfikatora ·
+wynik widoczny w UI silnika
+```
+
+W ramce widać identyfikatory T1: użytkownik `proxy-ui` (wariant B2 — tożsamość dokłada
+proxy) i `Actor agent-mcp` przy przebiegu (klucz agenta `developer`/`mcp-only`).
+
+### 10.1 Blokada znaleziona na prawdziwym układzie: pusty `base.yaml` wywracał każdy zapis
+
+Pierwsze podejście **nie przeszło** i warto to zapisać dokładnie, bo dotyczyłoby także
+odbioru T5. Model dostawał na **każdą** definicję, nawet jednokrokową:
+
+```
+process_write mode=preview  ->  [YAML_NIEPOPRAWNY] base.yaml: Definicja musi być dokumentem
+YAML z polami na najwyższym poziomie (mapą), nie listą ani wartością prostą.
+```
+
+Przyczyna: `docker-compose.yml` zakłada plik bazowy silnika **z samymi komentarzami**
+(jego własny komentarz mówi wprost „Pusty plik jest poprawny"), a warstwa polityki parsuje
+ten plik jak definicję i pusty dokument odrzuca. Dwie prawdziwe wypowiedzi, które razem
+blokowały autorstwo procesów w całości.
+
+Naprawione **po mojej stronie**, bo to jest miejsce styku i tylko ono jest moje
+(`chat-backend/server.mjs`, `odczytajPlikBazowy`): plik bez jednej linii treści nie niesie
+żadnych akcji własnych, więc „pusty" i „brak" znaczą dla polityki to samo — podajemy `null`.
+Gdy ktoś wpisze do pliku akcje, wraca normalna ścieżka razem z wykrywaniem podmiany.
+
+**Co z tego zostaje dla innych:** dopóki `base.yaml` jest pusty, **forma A kontraktu
+(`action: <kontrakt>-v<N>`) nie istnieje na prawdziwym układzie** — działa wyłącznie forma B
+(schemat wpisany wprost). Żeby forma A zaczęła działać, ktoś musi wpisać do pliku bazowego
+blok z `rejestr.akcjeBazowe()`. To zadanie T1 (plik jest edytowalny REST-em z rolą admina),
+nie moje, i **nie jest zrobione**.

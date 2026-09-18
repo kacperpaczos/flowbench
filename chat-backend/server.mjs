@@ -266,14 +266,34 @@ async function przygotujPolityke() {
     klient: stan.obserwator.klient,
     rejestr: stan.rejestr,
     zezwolenia: stan.zezwolenia,
-    odczytajPlikBazowy: srodowisko.plikBazowy
-      ? () => readFile(srodowisko.plikBazowy, 'utf8')
-      : null,
+    odczytajPlikBazowy: srodowisko.plikBazowy ? odczytajPlikBazowy : null,
     logger: console,
   })
   stan.system = `${SYSTEM_BAZOWY}\n\n${katalogKontraktow(stan.rejestr)}`
   console.log(`polityka: bramka MCP na ${stan.mcp.url}, kontraktow: ${stan.rejestr.lista().length},`
     + ` prompt systemowy: ${stan.system.length} znakow`)
+}
+
+/**
+ * Plik bazowy silnika dla bramki polityki (KONTRAKT.md par. 4.7).
+ *
+ * Plik potrafi nie miec ANI JEDNEJ linii tresci - swiezy uklad stawia go z samymi
+ * komentarzami i to jest poprawny stan ("pusty plik jest poprawny", docker-compose.yml).
+ * Warstwa polityki parsuje go jednak jak definicje i taki plik odrzuca jako
+ * YAML_NIEPOPRAWNY - a odrzucenie pliku bazowego wywraca KAZDY zapis procesu.
+ * Zmierzone na prawdziwym ukladzie: model dostawal
+ *   [YAML_NIEPOPRAWNY] base.yaml: Definicja musi byc dokumentem YAML z polami
+ *   na najwyzszym poziomie (mapa), nie lista ani wartoscia prosta.
+ * na kazda, nawet najprostsza definicje.
+ *
+ * Plik bez tresci nie niesie zadnych akcji wlasnych, wiec "pusty" i "brak" znacza
+ * dla polityki to samo - podajemy null. Gdy ktos wpisze do niego akcje, wraca
+ * normalna sciezka razem z wykrywaniem podmiany.
+ */
+async function odczytajPlikBazowy() {
+  const tresc = await readFile(srodowisko.plikBazowy, 'utf8')
+  const bezKomentarzy = tresc.replace(/^\s*#.*$/gm, '').replace(/^\s*---\s*$/gm, '')
+  return bezKomentarzy.trim() === '' ? null : tresc
 }
 
 // --- model --------------------------------------------------------------------
