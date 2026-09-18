@@ -41,6 +41,27 @@ kontrakty/<id-kontraktu>/v<N>.json
 4. Zmiana czegokolwiek w tym katalogu **unieważnia wszystkie zezwolenia** na uruchomienie —
    procesy trzeba zapisać ponownie, żeby przeszły politykę wobec nowych kontraktów.
 
+## Skąd biorą się pliki w tym katalogu
+
+Kontrakty procesów odtworzonych z n8n zostały **wypromowane ze schematów, które T4 napisał
+w `dags/*.yaml`**, narzędziem:
+
+```sh
+node chat-backend/polityka/narzedzia/zatwierdz-kontrakt.mjs dags/*.yaml            # podgląd
+node chat-backend/polityka/narzedzia/zatwierdz-kontrakt.mjs --zapisz dags/*.yaml   # zapis
+```
+
+Narzędzie dedupuje po odcisku schematu — dwa kroki o identycznym schemacie dostają jeden
+kontrakt — i nigdy nie nadpisuje istniejącej wersji, tylko dokłada kolejną. **Nie jest
+częścią bramki i nie wywołuje się samo**: promocja kontraktu ma być świadomą decyzją
+człowieka, widoczną w Gicie jako nowy plik.
+
+Gdy T4 zmieni schemat w `dags/`, test `chat-backend/test/polityka/procesy-repozytorium.test.mjs`
+zacznie padać i powie, co zrobić. To nie jest awaria testu — to jest ten mechanizm.
+
+Kontrakty `status-procesu`, `pomiar-temperatury`, `srednia-temperatur` i `wartosc-zamowienia`
+(v1, v2) służą **testom samej polityki** — nie opisują żadnego procesu z `dags/`.
+
 ## Jak proces odwołuje się do kontraktu
 
 * **Forma A (zalecana).** Krok używa akcji własnej z pliku bazowego silnika:

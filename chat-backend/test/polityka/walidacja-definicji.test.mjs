@@ -467,6 +467,59 @@ steps:
     assert.equal(wynik.ok, true, komunikaty(wynik))
   })
 
+  test('depends wskazuje krok przez jego id, nie przez name - to jest poprawne', () => {
+    // Sprawdzone wykonaniem na przypiętej wersji silnika: `depends: [pierwszy]` wobec
+    // kroku `name: "Krok pierwszy", id: pierwszy` linituje sie i wykonuje na zielono.
+    const yaml = `name: depends-po-id
+steps:
+  - id: policz
+    name: "Policz wartość"
+    run: echo '{"status":"OK"}'
+    output: WYNIK
+    output_schema: ${schematYaml('status-procesu', 1)}
+  - id: pokaz
+    name: "Pokaż wynik"
+    depends: [policz]
+    run: printf '%s' "$WYNIK" | jq -r .status
+`
+    const wynik = sprawdz('depends-po-id', yaml)
+    assert.equal(wynik.ok, true, komunikaty(wynik))
+  })
+
+  test('cykl po identyfikatorach id też jest wykrywany', () => {
+    const yaml = `name: cykl-po-id
+steps:
+  - id: a
+    name: "Krok A"
+    depends: [b]
+    run: echo a
+  - id: b
+    name: "Krok B"
+    depends: [a]
+    run: echo b
+`
+    const wynik = sprawdz('cykl-po-id', yaml)
+    assert.equal(wynik.ok, false)
+    assert.deepEqual(kody(wynik), ['GRAF_CYKL'])
+  })
+
+  test('K4 liczy zależność wskazaną przez id', () => {
+    const yaml = `name: k4-po-id
+steps:
+  - id: policz
+    name: "Policz wartość"
+    run: echo '{"status":"OK"}'
+    output: WYNIK
+    output_schema: ${schematYaml('status-procesu', 1)}
+  - id: pokaz
+    name: "Pokaż wynik"
+    run: printf '%s' "$WYNIK" | jq -r .status
+`
+    const wynik = sprawdz('k4-po-id', yaml)
+    assert.equal(wynik.ok, false)
+    assert.deepEqual(kody(wynik), ['K4_BRAK_DEPENDS'])
+  })
+
   test('depends na nieistniejący krok - odmowa GRAF_ZALEZNOSC_NIEISTNIEJACA', () => {
     const yaml = `name: zla-zaleznosc
 steps:

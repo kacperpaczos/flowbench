@@ -1,0 +1,39 @@
+{
+  "kontrakt": "generuj",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Generuj artefakt\" procesu duze-dane-manifest.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "sciezka",
+      "rozmiarB",
+      "sha256",
+      "liczbaRekordow",
+      "sumaWartosci"
+    ],
+    "properties": {
+      "sciezka": {
+        "type": "string",
+        "pattern": "^[a-z0-9][a-z0-9/._-]*$"
+      },
+      "rozmiarB": {
+        "type": "integer",
+        "minimum": 1
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "liczbaRekordow": {
+        "type": "integer",
+        "minimum": 0
+      },
+      "sumaWartosci": {
+        "type": "integer",
+        "minimum": 0
+      }
+    }
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "kontrakt": "podatek-wysoki",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Podatek 32% (powyzej progu)\" procesu premie-od-pensji-galezie.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "elementy"
+    ],
+    "properties": {
+      "elementy": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "_pozycja",
+            "imie",
+            "stanowisko",
+            "pensja",
+            "stawkaPremii",
+            "premia",
+            "dodatek",
+            "premiaRazem",
+            "pensjaZPremia",
+            "progPodatkowy",
+            "stawkaPodatku",
+            "podatek",
+            "naDoReke"
+          ],
+          "properties": {
+            "_pozycja": {
+              "type": "integer"
+            },
+            "imie": {
+              "type": "string"
+            },
+            "stanowisko": {
+              "type": "string"
+            },
+            "pensja": {
+              "type": "number"
+            },
+            "stawkaPremii": {
+              "type": "number"
+            },
+            "premia": {
+              "type": "number"
+            },
+            "dodatek": {
+              "type": "number"
+            },
+            "premiaRazem": {
+              "type": "number"
+            },
+            "pensjaZPremia": {
+              "type": "number"
+            },
+            "progPodatkowy": {
+              "type": "number"
+            },
+            "stawkaPodatku": {
+              "type": "number",
+              "enum": [
+                0.12,
+                0.32
+              ]
+            },
+            "podatek": {
+              "type": "number"
+            },
+            "naDoReke": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

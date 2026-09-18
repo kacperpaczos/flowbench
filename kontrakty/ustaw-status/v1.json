@@ -1,0 +1,31 @@
+{
+  "kontrakt": "ustaw-status",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Set Status\" procesu status-ok.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "elementy"
+    ],
+    "properties": {
+      "elementy": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status"
+          ],
+          "properties": {
+            "status": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+}

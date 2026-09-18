@@ -1,0 +1,47 @@
+{
+  "kontrakt": "premia-8-procent",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Premia 8%\" procesu premie-od-pensji-galezie.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "elementy"
+    ],
+    "properties": {
+      "elementy": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "imie",
+            "stanowisko",
+            "pensja",
+            "stawkaPremii",
+            "premia"
+          ],
+          "properties": {
+            "imie": {
+              "type": "string"
+            },
+            "stanowisko": {
+              "type": "string"
+            },
+            "pensja": {
+              "type": "number"
+            },
+            "stawkaPremii": {
+              "type": "number"
+            },
+            "premia": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

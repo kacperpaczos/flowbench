@@ -1,0 +1,39 @@
+{
+  "kontrakt": "dane-pracownikow",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Dane pracownikow\" procesu premie-od-pensji-galezie.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "elementy"
+    ],
+    "properties": {
+      "elementy": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "imie",
+            "stanowisko",
+            "pensja"
+          ],
+          "properties": {
+            "imie": {
+              "type": "string"
+            },
+            "stanowisko": {
+              "type": "string"
+            },
+            "pensja": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}

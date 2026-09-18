@@ -1,0 +1,30 @@
+{
+  "kontrakt": "bramka-galezi",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Bramka galezi\" procesu premie-od-pensji-galezie.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "galazPowyzej",
+      "galazPonizej"
+    ],
+    "properties": {
+      "galazPowyzej": {
+        "type": "string",
+        "enum": [
+          "tak",
+          "nie"
+        ]
+      },
+      "galazPonizej": {
+        "type": "string",
+        "enum": [
+          "tak",
+          "nie"
+        ]
+      }
+    }
+  }
+}

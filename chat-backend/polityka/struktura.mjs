@@ -65,7 +65,9 @@ export function zbierzKroki(steps, sciezka = 'steps') {
       const krok = steps[klucz]
       const sciezkaKroku = `${sciezka}.${klucz}`
       if (krok && typeof krok === 'object' && !Array.isArray(krok)) {
-        wynik.push({ krok, sciezka: sciezkaKroku, nazwa: krok.name ?? krok.id ?? klucz, wGrafie: true, skrot: false })
+        // W zapisie mapą klucz jest nazwą kroku - też może paść w `depends`.
+        wynik.push({ krok: { name: klucz, ...krok }, sciezka: sciezkaKroku,
+          nazwa: krok.name ?? krok.id ?? klucz, wGrafie: true, skrot: false })
         const cialo = krok.foreach && typeof krok.foreach === 'object' ? krok.foreach.steps : null
         if (Array.isArray(cialo)) {
           cialo.forEach((podkrok, j) => dodaj(podkrok, `${sciezkaKroku}.foreach.steps[${j}]`, false))
@@ -75,7 +77,13 @@ export function zbierzKroki(steps, sciezka = 'steps') {
   }
 
   // Kroki bez nazwy własnej dostają nazwę zastępczą - potrzebną wyłącznie do komunikatów.
-  return wynik.map((w, i) => ({ ...w, nazwa: w.nazwa ?? `#${i + 1}` }))
+  // `identyfikatory` to WSZYSTKIE formy, którymi `depends` może wskazać ten krok: sprawdzone
+  // wykonaniem, że silnik rozwiązuje zależność zarówno po `name`, jak i po `id`.
+  return wynik.map((w, i) => ({
+    ...w,
+    nazwa: w.nazwa ?? `#${i + 1}`,
+    identyfikatory: [w.krok?.name, w.krok?.id, w.nazwa].filter((x) => typeof x === 'string' && x !== ''),
+  }))
 }
 
 /**
@@ -89,12 +97,14 @@ export function zbierzUchwyty(handlerOn, sciezka = 'handler_on') {
   for (const zdarzenie of Object.keys(handlerOn)) {
     const krok = handlerOn[zdarzenie]
     if (!krok || typeof krok !== 'object' || Array.isArray(krok)) continue
+    const nazwa = krok.name ?? krok.id ?? `handler_on.${zdarzenie}`
     wynik.push({
       krok,
       sciezka: `${sciezka}.${zdarzenie}`,
-      nazwa: krok.name ?? krok.id ?? `handler_on.${zdarzenie}`,
+      nazwa,
       wGrafie: false,
       skrot: false,
+      identyfikatory: [nazwa],
     })
   }
   return wynik

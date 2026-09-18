@@ -1,0 +1,46 @@
+{
+  "kontrakt": "sprawdz-manifest",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Walidacja manifestu\" procesu duze-dane-manifest.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "sciezka",
+      "rozmiarB",
+      "sha256",
+      "zgodnyRozmiar",
+      "zgodnaSuma",
+      "zawartoscSprawdzona",
+      "uwaga"
+    ],
+    "properties": {
+      "sciezka": {
+        "type": "string"
+      },
+      "rozmiarB": {
+        "type": "integer"
+      },
+      "sha256": {
+        "type": "string",
+        "pattern": "^[0-9a-f]{64}$"
+      },
+      "zgodnyRozmiar": {
+        "type": "boolean"
+      },
+      "zgodnaSuma": {
+        "type": "boolean"
+      },
+      "zawartoscSprawdzona": {
+        "type": "boolean",
+        "enum": [
+          false
+        ]
+      },
+      "uwaga": {
+        "type": "string"
+      }
+    }
+  }
+}

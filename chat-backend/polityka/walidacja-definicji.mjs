@@ -383,6 +383,7 @@ export function sprawdzDefinicje({ nazwa, yaml, rejestr, plikBazowy = null, podd
     // --- K4: krawędź zależności jest krawędzią danych -------------------------------
     if (producenci.size > 0) {
       const osiagalne = zaleznosciPrzechodnie(nazwaKroku, zebrane)
+
       for (const { tekst, pole } of poleceniaKroku(efektywny)) {
         for (const [zmienna, producent] of producenci) {
           if (producent === nazwaKroku) continue
@@ -427,17 +428,23 @@ export function sprawdzDefinicje({ nazwa, yaml, rejestr, plikBazowy = null, podd
 
   function sprawdzGraf(zebrane, prefiks, nazwaDaga) {
     const wGrafie = zebrane.filter((z) => z.wGrafie)
+    // Silnik rozwiązuje `depends` po `name` ALBO po `id` (sprawdzone wykonaniem), więc
+    // wierzchołek indeksujemy pod obiema formami, a wewnątrz używamy jednej kanonicznej.
+    const poIdentyfikatorze = indeksKrokow(wGrafie)
     const nazwy = new Set(wGrafie.map((z) => z.nazwa))
     const krawedzie = new Map()
     for (const { krok, nazwa, sciezka } of wGrafie) {
-      const zal = zaleznosciKroku(krok)
-      krawedzie.set(nazwa, zal)
-      for (const cel of zal) {
-        if (!nazwy.has(cel)) {
+      const zal = []
+      for (const cel of zaleznosciKroku(krok)) {
+        const rozwiazany = poIdentyfikatorze.get(cel)
+        if (rozwiazany === undefined) {
           naruszenia.push(naruszenie('GRAF_ZALEZNOSC_NIEISTNIEJACA', `${sciezka}.depends`,
             `Krok "${nazwa}" zależy od kroku "${cel}", którego w procesie "${nazwaDaga}" nie ma.`))
+          continue
         }
+        zal.push(rozwiazany)
       }
+      krawedzie.set(nazwa, zal)
     }
 
     // Cykl przechodzi lint silnika (walidacja par. 3.1) i wybucha dopiero przy starcie:
@@ -471,17 +478,30 @@ export function sprawdzDefinicje({ nazwa, yaml, rejestr, plikBazowy = null, podd
   }
 }
 
+/** Każda forma, którą `depends` może wskazać krok (`name`, `id`), -> nazwa kanoniczna. */
+function indeksKrokow(zebrane) {
+  const indeks = new Map()
+  for (const pozycja of zebrane) {
+    for (const identyfikator of pozycja.identyfikatory ?? [pozycja.nazwa]) {
+      if (!indeks.has(identyfikator)) indeks.set(identyfikator, pozycja.nazwa)
+    }
+  }
+  return indeks
+}
+
 /** Domknięcie przechodnie `depends` - K4 pyta o osiągalność, nie o bezpośrednią krawędź. */
 function zaleznosciPrzechodnie(nazwaKroku, zebrane) {
   const poNazwie = new Map(zebrane.map((z) => [z.nazwa, z.krok]))
+  const indeks = indeksKrokow(zebrane)
+  const rozwiaz = (cele) => cele.map((c) => indeks.get(c)).filter((c) => c !== undefined)
   const osiagalne = new Set()
-  const stos = [...zaleznosciKroku(poNazwie.get(nazwaKroku))]
+  const stos = rozwiaz(zaleznosciKroku(poNazwie.get(nazwaKroku)))
   while (stos.length > 0) {
     const biezacy = stos.pop()
     if (osiagalne.has(biezacy)) continue
     osiagalne.add(biezacy)
     const krok = poNazwie.get(biezacy)
-    if (krok) stos.push(...zaleznosciKroku(krok))
+    if (krok) stos.push(...rozwiaz(zaleznosciKroku(krok)))
   }
   return osiagalne
 }

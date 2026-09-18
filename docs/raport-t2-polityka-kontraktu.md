@@ -17,8 +17,9 @@ montowany, `PUID=0`/`PGID=0`, bez `user:`. Stack n8n (`n8niframe`, 8080, wolumen
 | --- | --- |
 | `chat-backend/KONTRAKT.md` | **umowa z T3** — cała powierzchnia wywołań, spisana **przed** implementacją (commit `0a0f484`, przed commitem kodu `f7248b7`) |
 | `chat-backend/polityka/` | warstwa polityki: 11 modułów ESM, własny `package.json` |
-| `kontrakty/` | zatwierdzone schematy wyniku, wersjonowane w Gicie, 7 wersji w 6 kontraktach |
-| `chat-backend/test/polityka/` | 8 plików testowych + wspólny moduł pomocniczy, `node --test` |
+| `kontrakty/` | zatwierdzone schematy wyniku, wersjonowane w Gicie: 17 wypromowanych z `dags/` (własność T4) + 5 na potrzeby testów samej polityki |
+| `chat-backend/test/polityka/` | 9 plików testowych + wspólny moduł pomocniczy, `node --test` |
+| `chat-backend/polityka/narzedzia/zatwierdz-kontrakt.mjs` | promocja schematu z definicji procesu do rejestru — ręczna, poza bramką |
 
 Moduły: `bledy` (kształt odmowy), `kanonizacja` (odcisk struktury), `struktura`
 (normalizacja sparsowanej definicji), `identyfikatory` (§4.2), `rejestr-kontraktow`
@@ -55,7 +56,7 @@ do wklejenia w `server.mjs`, listę tego, czego warstwa **nie** gwarantuje, oraz
 
 ---
 
-## 2. Testy — 133 przechodzą
+## 2. Testy — 143 przechodzą
 
 ```
 $ DAGU_POLITYKA_URL=http://127.0.0.1:9210/dagu/mcp \
@@ -64,32 +65,61 @@ $ DAGU_POLITYKA_URL=http://127.0.0.1:9210/dagu/mcp \
   node --test 'chat-backend/test/polityka/*.test.mjs'
 
 ▶ integracja z żywym Dagu
-  ✔ PUNKT 3 na żywo: rozgałęzienie + continue_on: skipped + fan-in przechodzi politykę I się wykonuje (2415.564704ms)
-  ✔ silnik naprawdę czerwieni naruszenie schematu - to NIE jest nasza robota (166.126352ms)
-  ✔ PUNKT 7 na żywo: model pisze "gotowe" przy czerwonym przebiegu - warstwa zwraca błąd (4.086041ms)
-  ✔ PUNKT 6 na żywo: podmiana pliku definicji po walidacji, przed startem - start ODMAWIA (231.227984ms)
-  ✔ klucz agenta (developer, allowedSurfaces=[mcp]) nie ma REST-a - zamkniete uprawnieniami (8.037848ms)
-  ✔ edycja definicji przez REST/UI silnika (rola admin) - start ODMAWIA (36.288357ms)
-  ✔ odmowa polityki nie zostawia niczego w silniku (7.336883ms)
+  ✔ PUNKT 3 na żywo: rozgałęzienie + continue_on: skipped + fan-in przechodzi politykę I się wykonuje
+  ✔ silnik naprawdę czerwieni naruszenie schematu - to NIE jest nasza robota
+  ✔ PUNKT 7 na żywo: model pisze "gotowe" przy czerwonym przebiegu - warstwa zwraca błąd
+  ✔ PUNKT 6 na żywo: podmiana pliku definicji po walidacji, przed startem - start ODMAWIA
+  ✔ klucz agenta (developer, allowedSurfaces=[mcp]) nie ma REST-a - zamkniete uprawnieniami
+  ✔ edycja definicji przez REST/UI silnika (rola admin) - start ODMAWIA
+  ✔ odmowa polityki nie zostawia niczego w silniku
 ✔ integracja z żywym Dagu (2895.556044ms)
 
-ℹ tests 133
-ℹ suites 32
-ℹ pass 133
+▶ procesy z katalogu dags/
+  ✔ katalog nie jest pusty
+  ✔ "demo-mcp-wartosc-zamowienia" przechodzi politykę kontraktu
+  ✔ "duze-dane-manifest" przechodzi politykę kontraktu
+  ✔ "lista-produktow-suma-zamowienia" przechodzi politykę kontraktu
+  ✔ "premie-od-pensji-galezie" przechodzi politykę kontraktu
+  ✔ "premie-od-pensji" przechodzi politykę kontraktu
+  ✔ "status-ok" przechodzi politykę kontraktu
+✔ procesy z katalogu dags/ (426.486589ms)
+
+ℹ tests 143
+ℹ suites 33
+ℹ pass 143
 ℹ fail 0
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 2065.89444
+ℹ duration_ms 1625.427516
 ```
 
-Bez zmiennych środowiskowych testy integracyjne się **pomijają**, a pozostałe 126 przechodzi
+Bez zmiennych środowiskowych testy integracyjne się **pomijają**, a pozostałe 136 przechodzi
 — `node --test 'chat-backend/test/polityka/*.test.mjs'`.
 
-Rozkład (`node --test <plik>`, liczba `pass`): walidacja definicji 44, identyfikatory 29,
-bramka MCP 17, rejestr kontraktów 12, drogi obejścia 10, zezwolenia 8, integracja z żywym
-Dagu 7, odczyt wyniku 6 — razem 133. Wszystkie komunikaty odmowy są po polsku i mówią
-operatorowi, co zrobić.
+Rozkład (`node --test <plik>`, liczba `pass`): walidacja definicji 47, identyfikatory 29,
+bramka MCP 17, rejestr kontraktów 12, drogi obejścia 10, zezwolenia 8, procesy
+z repozytorium 7, integracja z żywym Dagu 7, odczyt wyniku 6 — razem 143. Wszystkie
+komunikaty odmowy są po polsku i mówią operatorowi, co zrobić.
+
+### Sprawdzenie krzyżowe z prawdziwymi procesami
+
+Puściłem politykę na **sześciu definicjach, które T4 faktycznie odtworzył w `dags/`**.
+Wyszły z tego dwie rzeczy:
+
+* **Błąd w mojej warstwie, znaleziony i naprawiony.** `depends:` wskazywało kroki przez ich
+  `id`, a ja indeksowałem wierzchołki grafu tylko po `name` — każda taka zależność dawała
+  fałszywy `GRAF_ZALEZNOSC_NIEISTNIEJACA`. Sprawdziłem wykonaniem na przypiętej wersji
+  silnika, że `depends` po `id` linituje się i wykonuje na zielono, i poprawiłem indeks
+  (regresja: trzy testy w `walidacja-definicji.test.mjs`). To jest dokładnie powód, dla
+  którego warto puścić politykę na cudzej, prawdziwej pracy, a nie tylko na własnych
+  przykładach.
+* **Schematy T4 nie były jeszcze zatwierdzonymi kontraktami.** Wypromowałem je do
+  `kontrakty/` narzędziem `zatwierdz-kontrakt.mjs` (17 plików; dedupikacja po odcisku sprawia,
+  że oba warianty Premii i obie gałęzie podatku dzielą kontrakty). Usunąłem przy tym dwa
+  kontrakty, które zgadywałem, zanim `dags/` istniało (`suma-zamowienia`, `premie-od-pensji`)
+  — żaden test ich nie używał. Po tym **wszystkie sześć procesów przechodzi politykę**, co
+  pilnuje osobny test.
 
 ---
 
@@ -483,7 +513,10 @@ sukcesem.
    sekretów od kroku to T1/T3 i badanie bezpieczeństwa. Moja warstwa ich nie zastępuje.
 9. **Nie sprawdziłem `output_schema` w krokach kontenerowych ani w trybie rozproszonym.**
    Socket Dockera nie jest montowany (decyzja §5), tryb rozproszony jest poza zakresem (§12).
-10. **Reguła K4 działa na nazwach zmiennych w poleceniach powłoki.** Krok, który buduje
+10. **Nie odpowiadam za treść `dags/` ani `dags/skrypty/`.** Wypromowałem schematy T4 do
+    `kontrakty/` i sprawdziłem, że ich definicje przechodzą politykę — ale ich poprawności
+    merytorycznej (czy liczby zgadzają się z fixture) nie weryfikowałem; to T4 i T5.
+11. **Reguła K4 działa na nazwach zmiennych w poleceniach powłoki.** Krok, który buduje
     nazwę zmiennej dynamicznie (`eval`, `${!zmienna}`), wymknie się tej kontroli. Nie umiem
     tego objąć bez wykonywania skryptu.
 

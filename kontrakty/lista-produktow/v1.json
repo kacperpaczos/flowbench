@@ -1,0 +1,64 @@
+{
+  "kontrakt": "lista-produktow",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Lista produktow\" procesu lista-produktow-suma-zamowienia.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "elementy"
+    ],
+    "properties": {
+      "elementy": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "orderId",
+            "currency",
+            "items"
+          ],
+          "properties": {
+            "orderId": {
+              "type": "string"
+            },
+            "currency": {
+              "type": "string"
+            },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sku",
+                  "name",
+                  "unitPrice",
+                  "quantity"
+                ],
+                "properties": {
+                  "sku": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "unitPrice": {
+                    "type": "number"
+                  },
+                  "quantity": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

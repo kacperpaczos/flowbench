@@ -1,0 +1,29 @@
+{
+  "kontrakt": "waliduj-zawartosc",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Walidacja zawartosci\" procesu duze-dane-manifest.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "liczbaRekordow",
+      "sumaWartosci",
+      "zgodnaZDeklaracja"
+    ],
+    "properties": {
+      "liczbaRekordow": {
+        "type": "integer"
+      },
+      "sumaWartosci": {
+        "type": "integer"
+      },
+      "zgodnaZDeklaracja": {
+        "type": "boolean",
+        "enum": [
+          true
+        ]
+      }
+    }
+  }
+}

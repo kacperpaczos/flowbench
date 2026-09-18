@@ -1,0 +1,43 @@
+{
+  "kontrakt": "policz-wartosc-brutto",
+  "wersja": 1,
+  "opis": "Wynik kroku \"Policz wartosc brutto\" procesu demo-mcp-wartosc-zamowienia.",
+  "zatwierdzony": "2026-09-18",
+  "schemat": {
+    "type": "object",
+    "additionalProperties": false,
+    "required": [
+      "elementy"
+    ],
+    "properties": {
+      "elementy": {
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "produkt",
+            "ilosc",
+            "netto",
+            "brutto"
+          ],
+          "properties": {
+            "produkt": {
+              "type": "string"
+            },
+            "ilosc": {
+              "type": "integer"
+            },
+            "netto": {
+              "type": "number"
+            },
+            "brutto": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    }
+  }
+}
