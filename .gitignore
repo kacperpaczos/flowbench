@@ -23,3 +23,5 @@ dist
 
 # --- katalogi robocze silnika (stan wykonan, nie definicje) ---
 dagu-data/
+# Dagu zapisuje wlasny indeks obok definicji w dags/. To stan silnika, nie kod.
+dags/.dag.index
