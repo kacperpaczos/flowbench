@@ -426,3 +426,120 @@ body {
   background: #c7c9d1;
   cursor: not-allowed;
 }
+
+/* ---------- identyfikator techniczny obok nazwy polskiej (par. 4.2) ---------- */
+
+.badge.is-id {
+  background: #f3f4f6;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+}
+
+.status.is-blad::before {
+  background: #dc2626;
+}
+
+/* Pasek na stwierdzenia, ktore musza byc widoczne, a nie sa bledem calej aplikacji:
+   brak procesu, dokument w ramce nie bedacy aplikacja silnika. */
+.pasek-ostrzezenia {
+  margin: 0;
+  padding: 8px 18px;
+  background: #fef3c7;
+  border-bottom: 1px solid #fde68a;
+  color: #92400e;
+  font-size: 12.5px;
+}
+
+/* ---------- ekran logowania (R-A, par. 5.2) ---------- */
+
+.logowanie {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: var(--bg);
+}
+
+.logowanie-karta {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 340px;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.logowanie-karta h1 {
+  margin: 4px 0 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.logowanie-opis {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+.logowanie-karta label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.logowanie-karta input {
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font: inherit;
+  font-size: 14px;
+}
+
+.logowanie-karta input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.logowanie-karta button {
+  margin-top: 6px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.logowanie-karta button:disabled {
+  background: #c7d2fe;
+  cursor: default;
+}
+
+.logowanie-blad {
+  margin: 0;
+  color: #b91c1c;
+  font-size: 12.5px;
+}
+
+.wyloguj {
+  margin: 0 12px 10px;
+  padding: 7px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.wyloguj:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}

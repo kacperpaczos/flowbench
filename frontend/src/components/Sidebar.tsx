@@ -23,9 +23,11 @@ const items: Item[] = [
 export function Sidebar({
   active,
   onSelect,
+  onWyloguj,
 }: {
   active: string
   onSelect: (id: string) => void
+  onWyloguj: () => void
 }) {
   return (
     <nav className="sidebar">
@@ -52,8 +54,15 @@ export function Sidebar({
         ))}
       </ul>
 
+      {/* Wylogowanie uniewaznia sesje po stronie serwera (par. 5.2), nie tylko
+          czysci ciasteczko - i odbiera dostep takze do ramki, bo caly origin
+          stoi za ta sama sesja. */}
+      <button type="button" className="wyloguj" onClick={onWyloguj}>
+        Wyloguj
+      </button>
+
       <p className="sidebar-note">
-        Menu jest atrapą — prototyp sprawdza wyłącznie osadzenie edytora n8n.
+        Menu jest atrapą — prototyp sprawdza wyłącznie osadzenie UI silnika procesów.
       </p>
     </nav>
   )
