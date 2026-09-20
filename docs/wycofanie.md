@@ -164,6 +164,14 @@ docker run --rm -v n8niframe_n8n_data:/vol:ro -v "$KOPIA/wolumeny":/out alpine:l
 Procedura nieprzećwiczona nie jest procedurą, więc poniżej jest ta, którą przećwiczono
 **2026-09-18**, razem z jej wynikiem.
 
+> **Niuans ekstrakcji tar-pipe do świeżego wolumenu** (z drillu uzupełniającego,
+> 2026-09-20 — raport t5 §7): poniższa próba rozpakowuje do katalogu `mktemp`, natomiast
+> odtworzenie prosto do **nowego** wolumenu Dockera robi się przez potok
+> `tar -xzf - -C /data` w kontenerze — i wtedy pliki powstają jako **root**, a pierwszy
+> przebieg kończy się błędem tar na pliku `config` (klucz szyfrowania, tryb 0600).
+> Po ekstrakcji trzeba jawnie oddać własność: `chown -R 1000:1000` na zawartość wolumenu,
+> albo przejąć katalog główny wolumenu jeszcze przed rozpakowaniem.
+
 ```sh
 KOPIA=~/kopie-n8niframe/<wybrana>
 ( cd "$KOPIA" && sha256sum --check SUMY.sha256 )          # 1. sumy
