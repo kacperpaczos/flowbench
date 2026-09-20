@@ -12,9 +12,10 @@ zachowania przypiętej wersji silnika.
 
 ## Status dokumentu
 
-Wersja 3 domyka kontrakty danych i identyfikatorów. **Otwarte pozostają wyłącznie pozycje
-oznaczone niżej jako blokujące** — każda z nazwanym zadaniem, które blokuje. Nic poza nimi
-nie wstrzymuje implementacji.
+Wersja 3 domknęła kontrakty danych i identyfikatorów. Wersja 3.1 rozstrzyga ponadto wszystkie
+trzy ryzyka bezpieczeństwa: raport `docs/audyt-dagu-bezpieczenstwo.md` (werdykty P1–P6,
+2026-09-18) jest gotowy, decyzje operatora zapisane w §5.2. **Tabela niżej nie ma pozycji
+otwartych.**
 
 | Co | Stan | Blokuje | Gdzie |
 | --- | --- | --- | --- |
@@ -24,14 +25,15 @@ nie wstrzymuje implementacji.
 | **Polityka identyfikatorów** | **ustalone wersją 3**, decyzja operatora | — | §4.2 |
 | **Git jako nośnik wersji i rollbacku** | **ustalone wersją 3**, decyzja operatora | — | §11 |
 | Rozliczenie 15 obiektów wiedzy | ustalone — `docs/rejestr-workflow.md` | — | §7a |
-| Izolacja sekretów od kroku DAG-a (R-C) | **otwarte** — czeka na `docs/audyt-dagu-bezpieczenstwo.md` | T1 (konfiguracja Dagu), granica zaufania §5.0 | §5 R-C |
-| Token silnika: `localStorage` czy proxy (R-B) | **otwarte** — czeka na ten sam raport | T1 (Caddyfile, logowanie), T3 (ramka) | §5 R-B |
-| Mechanizm sesji `/api/chat` (R-A) | **otwarte** — czeka na ten sam raport | T1 (backend, proxy), T3 (frontend) | §5 R-A |
+| Izolacja sekretów od kroku DAG-a (R-C) | **rozstrzygnięte 2026-09-18** — werdykt P1–P3: **`IZOLACJA-POZORNA`**; krok biegnie jako **root** w kontenerze silnika i czyta `config.yaml` (P1), ma **otwarty egress** do internetu (P2), a **bramka polityki nie jest granicą bezpieczeństwa** — krok zapisuje po `base.yaml` i `dags/` (P3). W wersji Community **nie da się tego domknąć**; decyzja operatora: **ryzyko przyjęte + utwardzenie sieci** (`internal: true`, rozdzielenie sieci), warunek brzegowy Fazy 2 (§5.2) | — | §5 R-C, §5.0, §5.2 |
+| Token silnika: `localStorage` czy proxy (R-B) | **rozstrzygnięte 2026-09-18** — werdykt P4: `B2-WYKONALNE-Z-ZASTRZEŻENIEM` (samo wstrzyknięcie nagłówka nie przechodzi route-guarda SPA; działa sentinel w `localStorage` + podmiana nagłówka na Caddy, dowód z headless Chrome); decyzja operatora: **B2** — zmiana wcześniejszego wyboru B1. Wdrożone (raport T1 §5), sprawdzone odbiorem (R01) | — | §5 R-B, §5.2 |
+| Mechanizm sesji `/api/chat` (R-A) | **rozstrzygnięte 2026-09-18** — werdykt P6: mechanizm **działa** (ciasteczko `HttpOnly; SameSite=Strict`, unieważnialność serwerowa, kontrola `Origin`; dowody 401/200/403/401); decyzja operatora: **wdrożyć** (T1) — wdrożone, sprawdzone odbiorem (R08) | — | §5 R-A, §5.2 |
 | Utraty funkcji A1–A2, L1–L7 | zaakceptowane 2026-09-18 pod W-1 i W-2 | — | §7.1, §7.2 |
 
-Trzy otwarte pozycje mają jedno źródło: badanie bezpieczeństwa. Do jego werdyktu **T2
-(warstwa polityki) i T4 (migracja) nie są zablokowane** — kontrakt danych, na którym stoją,
-jest już zamknięty.
+Trzy pozycje bezpieczeństwa miały jedno źródło: badanie bezpieczeństwa. **Nie blokowały** T2
+(warstwa polityki) ani T4 (migracja) — kontrakt danych, na którym stoją, był już zamknięty.
+Wiersz R-C jest „rozstrzygnięty przyjęciem", nie „domknięty": krok DAG-a nadal jest rootem
+(§5.2), i to jest granica zaufania §5.0, której wersja Community nie przesuwa.
 
 ## 1. Zakres
 
@@ -329,7 +331,7 @@ Zanim pojedyncze ryzyka: **kogo ten system kontroluje, a kogo nie.** Bez tego zd
 | Aktor | Postawa | Uzasadnienie |
 | --- | --- | --- |
 | **Model jako autor definicji** (przez MCP) | **kontrolowany** | Definicja przechodzi przez lint silnika i warstwę polityki (§4.1a). Model nie ma powłoki ani plików poza tą ścieżką. |
-| **Krok DAG-a napisany przez model** (kod wykonywany przez silnik) | **kontrolowany warunkowo** | Zakres kontroli zależy od werdyktu R-C. Do czasu werdyktu zakładamy, że krok widzi wszystko, co widzi proces serwera Dagu. |
+| **Krok DAG-a napisany przez model** (kod wykonywany przez silnik) | **POZA KONTROLĄ — przyjęte** | Werdykt R-C (2026-09-18, §5.2): krok biegnie jako **root** w kontenerze silnika, czyta jego `config.yaml`, zapisuje po `dags/` i `base.yaml` — założenie „krok widzi wszystko, co widzi proces serwera" potwierdził pomiar, nie ostrożność. Zmierzone wyjątki: sekrety backendu, poświadczenia modelu, socket Dockera i usługi hosta na `127.0.0.1` są po jego zasięgu (raport T1 §10). |
 | **Operator aplikacji** (przeglądarka, czat, ramka) | **kontrolowany na wejściu** | Sesja `/api/chat` (R-A), ograniczenia ramki. Nie kontrolujemy tego, co operator robi świadomie w UI Dagu. |
 | **Ktokolwiek z zapisem do `docker-compose.yml`, pliku bazowego Dagu, katalogu `dags/` albo do wolumenu** | **POZA GWARANCJĄ** | Taki aktor przepisuje same reguły. Żaden środek z tej sekcji go nie zatrzymuje i nie udajemy, że zatrzymuje. |
 | **Administrator hosta / użytkownik OS uruchamiający Docker** | **POZA GWARANCJĄ** | Rootless Docker mapuje kontener na tego użytkownika. Ma dostęp do wszystkich plików, wolumenów i procesów obu silników. |
@@ -369,7 +371,7 @@ działała po jednym logowaniu, token musi skądś pochodzić.
 **Skutek:** jeśli token leży w `localStorage` naszego originu, XSS w naszej aplikacji
 oddaje napastnikowi tyle Dagu, ile ten token może.
 
-**Środek — DO ROZSTRZYGNIĘCIA, dwa warianty:**
+**Środek — ROZSTRZYGNIĘTY 2026-09-18 (werdykt P4, decyzja operatora): B2.** Rozważane warianty:
 
 * **B1 — token w `localStorage`** (wybór operatora z 2026-09-18). Ryzyko przyjęte świadomie.
   Obniżenie ryzyka zależy od tego, czy token da się wystawić z mniejszymi uprawnieniami
@@ -380,8 +382,9 @@ oddaje napastnikowi tyle Dagu, ile ten token może.
   mimo wstrzykniętego nagłówka żądać logowania, bo jej własny stan klienta mówi
   „niezalogowany". Zlecone do weryfikacji w tym samym zadaniu, pytanie P4.
 
-Jeśli B2 okaże się wykonalne, rekomenduję zmianę wyboru na B2 i przedstawię ją operatorowi
-jako osobną decyzję. Do tego czasu obowiązuje B1.
+B2 okazał się wykonalny — z zastrzeżeniami (`B2-WYKONALNE-Z-ZASTRZEŻENIEM`, audyt P4). Operator
+zmienił wybór na **B2** (§5.2); wdrożenie i dowód z przeglądarki: raport T1 §5. B1 pozostał
+tu opisany jako wariant odrzucony.
 
 ### R-C — krok DAG-a napisany przez model ma dostęp do sekretów silnika
 
@@ -395,10 +398,10 @@ konfiguracyjnego.
 > w tym samym kontenerze i prawdopodobnie tym samym użytkownikiem co serwer, więc plik
 > konfiguracyjny może być dla niego zwyczajnie czytelny. Wtedy sekret przenosi się
 > z jednego czytelnego miejsca w drugie i nic nie zyskujemy.
-> **Zlecone do weryfikacji:** badanie bezpieczeństwa (`task_9cb45f14bf1f`), pytanie P1. Do czasu werdyktu R-C pozostaje
-> **otwarte**, a nie zamknięte. Jeśli środek okaże się pozorny, wracam do operatora
-> z wariantami, które operator odrzucił wcześniej (executor kontenerowy, osobna instancja)
-> albo ze stwierdzeniem, że w Community nie da się tego domknąć.
+> **Zlecone do weryfikacji:** badanie bezpieczeństwa (`task_9cb45f14bf1f`), pytanie P1.
+> **Werdykt 2026-09-18: środek jest pozorny — `IZOLACJA-POZORNA` (P1).** Wrócono do operatora
+> ze stwierdzeniem, że w Community nie da się tego domknąć; operator przyjął ryzyko
+> i domknął to, co kosztowało mało — egress i ruch boczny (§5.2).
 
 ### 5.2 Werdykty badania i decyzje operatora (wersja 3.1)
 
@@ -509,7 +512,7 @@ Tak ma być nazywana w raporcie odbiorczym i w `chat-backend/KONTRAKT.md`.
 | Silnik | `n8nio/n8n:2.38.7` | `ghcr.io/dagucloud/dagu@sha256:b242dc7b…` |
 | Prefiks | `handle_path /n8n/*` (obcinanie — obejście błędu n8n) | `handle /dagu*`, **bez** obcinania; Dagu ma natywne `DAGU_BASE_PATH` |
 | Nagłówki ramki | `N8N_CONTENT_SECURITY_POLICY` w konfiguracji silnika | `header_down` na Caddym, bo Dagu nie daje opcji |
-| Sesja | ciasteczko `n8n-auth`, `SameSite=Lax` | JWT w ciele odpowiedzi; gdzie mieszka token — **otwarte**, wariant B1 albo B2 wg werdyktu R-B |
+| Sesja | ciasteczko `n8n-auth`, `SameSite=Lax` | JWT w ciele odpowiedzi; token mieszka **wyłącznie w konfiguracji proxy** (wariant B2, §5.2), przeglądarka trzyma nie-sekretny sentinel |
 | Autorstwo definicji | 6 narzędzi MCP (z 35) | 3 narzędzia MCP: `dagu_read`, `dagu_change`, `dagu_execute`, **za warstwą polityki** (§4.1a) |
 | Zatwierdzenia, webhooki, artefakty | węzły n8n | REST pod tym samym prefiksem i tokenem — cienki klient w backendzie |
 | Deep-link | `/n8n/workflow/<id>` — jedno pole | **dwa pola**: proces `/dagu/dags/<nazwa>/status`, wykonanie `/dagu/dag-runs/<nazwa>/<dagRunId>` (§4.3) |
@@ -557,7 +560,7 @@ Z tego wynikają dwa wiążące warunki odbioru, ważniejsze niż pojedyncze poz
 
 | # | Utrata | Decyzja operatora |
 | --- | --- | --- |
-| A1 | **Brak edytora drag-and-drop.** Graf jest do oglądania; operator edytuje YAML w Monaco albo prosi czat. Prawdziwa utrata funkcji wobec n8n. | zaakceptowane 2026-09-18 |
+| A1 | **Brak edytora drag-and-drop.** Graf jest do oglądania; operator edytuje YAML w Monaco albo prosi czat. Prawdziwa utrata funkcji wobec n8n. | zaakceptowane 2026-09-18. **Zakres tej zgody: wyłącznie sposób edycji** — kategoria „zaakceptowane ograniczenie" z tabeli W-3 (§7.1), bo proces powstaje i działa tak samo, a zmienia się tylko forma edycji. **Nie jest to zgoda na utratę rezultatów, danych, historii wykonań ani kontekstu rozmowy** — ta kategoria to „regresja" i nikt jej nie może zaakceptować (W-1, W-3) |
 | A2 | **Brak typowanego przepływu danych** między krokami; tekst zamiast `$json.pole`. | zaakceptowane 2026-09-18 |
 | L1 | **Community: jeden uzytkownik, max 2 klucze API, brak SSO, RBAC i audit logow** (HTTP 403) | zaakceptowane **dla prototypu z jednym operatorem**. To ograniczenie **edycji produktu**, nie licencji — patrz §8. Przed Fazą 2 wymagana osobna decyzja, i ma ona **więcej niż dwie opcje**: (a) zostać przy jednym operatorze, (b) postawić uwierzytelnianie i role we własnej warstwie przed Dagu, (c) Dagu Pro, (d) inny silnik. Wersja 2 pisała „Pro albo rezygnacja” — to był fałszywy wybór dwuczłonowy. |
 | L2 | **Licencja GPL-3.0-or-later**; osobnej umowy wymaga wyłącznie **komercyjne osadzanie embedded Go API** | zaakceptowane. Nasz scenariusz nie dotyka tego zastrzeżenia — patrz §8, gdzie rozdzielone są trzy różne rzeczy, które wersja 2 zlewała w jedno. |
@@ -726,7 +729,7 @@ nie intencję. `R01`–`R18` to scenariusze regresji z `docs/baseline-prototypu.
 | I3 | Transliteracja deterministyczna, kolizje rozstrzygane po naszej stronie | T2 | `Średnia temperatura z trzech miast` → `srednia-temperatura-z-trzech-miast`; druga taka nazwa → sufiks `-2`. |
 | I4 | Segment URL kodowany, deep-link działa | T3 | R04 na odtworzonym procesie; zmiana nazwy → stary deep-link jawnie nieaktualny (różnica, nie awaria). |
 
-### 13.3 Bezpieczeństwo (§5) — testy zależne od werdyktu badania
+### 13.3 Bezpieczeństwo (§5) — werdykty rozstrzygnięte (§5.2), wykonanie: raport T1 §5–§6, §10 i macierz
 
 | # | Wymaganie | Zadanie | Test / dowód |
 | --- | --- | --- | --- |
