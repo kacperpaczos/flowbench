@@ -62,7 +62,7 @@ export function Sidebar({
       </button>
 
       <p className="sidebar-note">
-        Menu jest atrapą — prototyp sprawdza wyłącznie osadzenie UI silnika procesów.
+        Pozycje menu otwierają widoki silnika procesów w ramce.
       </p>
     </nav>
   )

@@ -1,0 +1,128 @@
+# Raport zamowienia ZAM-2026-001 — brutto pozycji (VAT 23%), najdrozsza pozycja, suma do zaplaty.
+# Wejscie: /var/lib/dagu/dags/dane/zamowienie-ZAM-2026-001.json
+name: zamowienie-raport
+description: "Raport zamówienia ZAM-2026-001 — brutto pozycji (VAT 23%), najdroższa pozycja i łączna suma do zapłaty."
+
+steps:
+  - id: wczytaj_zamowienie
+    name: "Wczytaj zamowienie"
+    description: "Odczyt pliku zamowienia i projekcja do kontraktu listy produktow"
+    command: bash
+    script: |
+      jq -c '(if type == "array" then . else [.] end) | {elementy: map({orderId: (.orderId // .id // .numer), currency: (.currency // .waluta), items: ((.items // .pozycje // .produkty) | map({sku, name, unitPrice, quantity}))})}' /var/lib/dagu/dags/dane/zamowienie-ZAM-2026-001.json
+    output: ZAMOWIENIE
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [orderId, currency, items]
+            properties:
+              orderId:  {type: string}
+              currency: {type: string}
+              items:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [sku, name, unitPrice, quantity]
+                  properties:
+                    sku:       {type: string}
+                    name:      {type: string}
+                    unitPrice: {type: number}
+                    quantity:  {type: integer}
+
+  - id: brutto_pozycji
+    name: "Brutto pozycji"
+    description: "Dla kazdej pozycji: netto = unitPrice*quantity, brutto = netto z VAT 23%, zaokraglenie do groszy"
+    depends: [wczytaj_zamowienie]
+    command: bash
+    script: |
+      echo "$ZAMOWIENIE" | jq -c '{elementy: [.elementy[].items[] | {produkt: .name, ilosc: .quantity, netto: ((.unitPrice * .quantity * 100 | round) / 100), brutto: ((.unitPrice * .quantity * 1.23 * 100 | round) / 100)}]}'
+    output: BRUTTO
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [produkt, ilosc, netto, brutto]
+            properties:
+              produkt: {type: string}
+              ilosc:   {type: integer}
+              netto:   {type: number}
+              brutto:  {type: number}
+
+  - id: najdrozsza_pozycja
+    name: "Najdrozsza pozycja"
+    description: "Pozycja o najwyzszej wartosci brutto"
+    depends: [brutto_pozycji]
+    command: bash
+    script: |
+      echo "$BRUTTO" | jq -c '.elementy | max_by(.brutto)'
+    output: NAJDROZSZA
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [produkt, ilosc, netto, brutto]
+      properties:
+        produkt: {type: string}
+        ilosc:   {type: integer}
+        netto:   {type: number}
+        brutto:  {type: number}
+
+  - id: suma_do_zaplaty
+    name: "Suma do zaplaty"
+    description: "lineTotal pozycji, subtotal, VAT 23%, total = suma brutto pozycji; wynik w opakowaniu elementy zgodnie z kontraktem"
+    depends: [wczytaj_zamowienie]
+    command: bash
+    script: |
+      echo "$ZAMOWIENIE" | jq -c 'def r2: ((. * 100 | round) / 100); {elementy: [.elementy[] | . as $o | ($o.items | map(.unitPrice * .quantity | r2)) as $netto | ($o.items | map((.unitPrice * .quantity * 1.23) | r2)) as $brutto | {orderId: $o.orderId, currency: $o.currency, lines: ([$o.items, $netto] | transpose | map({sku: .[0].sku, name: .[0].name, unitPrice: .[0].unitPrice, quantity: .[0].quantity, lineTotal: .[1]})), itemCount: ($o.items | length), unitsTotal: ($o.items | map(.quantity) | add), subtotal: ($netto | add | r2), vatRate: 0.23, vat: ((($brutto | add) - ($netto | add)) | r2), total: ($brutto | add | r2)}]}'
+    output: SUMA
+    output_schema:
+      type: object
+      additionalProperties: false
+      required: [elementy]
+      properties:
+        elementy:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [orderId, currency, lines, itemCount, unitsTotal,
+                       subtotal, vatRate, vat, total]
+            properties:
+              orderId:  {type: string}
+              currency: {type: string}
+              lines:
+                type: array
+                minItems: 1
+                items:
+                  type: object
+                  additionalProperties: false
+                  required: [sku, name, unitPrice, quantity, lineTotal]
+                  properties:
+                    sku:       {type: string}
+                    name:      {type: string}
+                    unitPrice: {type: number}
+                    quantity:  {type: integer}
+                    lineTotal: {type: number}
+              itemCount:  {type: integer}
+              unitsTotal: {type: integer}
+              subtotal:   {type: number}
+              vatRate:    {type: number}
+              vat:        {type: number}
+              total:      {type: number}

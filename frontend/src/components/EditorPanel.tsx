@@ -6,7 +6,13 @@ import {
 import type { NazwaProcesu } from '../nazwa-procesu'
 import { zadanie } from '../sesja'
 
-export type CelRamki = { dagName: string | null; dagRunId: string | null; licznik: number }
+export type CelRamki = {
+  dagName: string | null
+  dagRunId: string | null
+  licznik: number
+  /** Bezposredni adres widoku silnika (z menu). Chat ustawia null i nawiguje po dagName. */
+  adres?: string | null
+}
 
 /**
  * Srodkowy panel: prawdziwe UI silnika osadzone w ramce. Wlasnego canvasu nie ma
@@ -40,6 +46,7 @@ export type CelRamki = { dagName: string | null; dagRunId: string | null; liczni
 const POLL_MS = 400
 
 const adresCelu = (cel: CelRamki) => {
+  if (cel.adres) return cel.adres
   if (cel.dagName && cel.dagRunId) return adresWykonania(cel.dagName, cel.dagRunId)
   if (cel.dagName) return adresProcesu(cel.dagName)
   return ADRES_LISTY

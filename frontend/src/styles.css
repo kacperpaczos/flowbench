@@ -37,8 +37,14 @@ body {
   height: 100%;
   display: grid;
   grid-template-columns: 216px minmax(0, 1fr) 340px;
-  gap: 12px;
+  column-gap: 0;
   padding: 12px;
+}
+
+/* Luka miedzy menu a srodkiem zdejmowana (decyzja operatora 2026-09-20):
+   menu i ramka tworza jedna Bryle; odstep zostaje wylacznie przy czacie. */
+.chat {
+  margin-left: 12px;
 }
 
 /* ---------- lewy panel ---------- */
