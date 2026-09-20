@@ -72,7 +72,7 @@ wypisanym) · `niezweryfikowane` (bez pomiaru) · `poza zakresem` (decyzja świa
 
 | # | Wymaganie | Zadanie | Test / dowód | Status |
 | --- | --- | --- | --- | --- |
-| P1 | 18 scenariuszy baseline rozliczonych | T5 | Odbiór §2+§5 (2026-09-20): **17 zaliczonych, R07 niezweryfikowane** (przyczyna §5 tamtego dokumentu); niuanse opisane per wiersz | potwierdzone 17/18 |
+| P1 | 18 scenariuszy baseline rozliczonych | T5 | Odbiór §2+§5 (2026-09-20) + drill t5 (raport `raport-t5-odbor-uzupelniajacy.md` §3–4, 2026-09-20): **18 zaliczonych, 0 niezweryfikowanych**; niuanse opisane per wiersz | potwierdzone 18/18 |
 | P2 | Cztery procesy odtworzone, zgodność co do wartości, typów, precyzji i kolejności | T4 | `fixtures/_narzedzia/porownaj.py` na stdout ostatnich kroków: **wszystkie zgodne** — rejestr §8.3 | potwierdzone |
 | P3 | Premie: wariant A (1:1) **i** wariant B (nowy graf) jako dwa osobne sprawdzenia | T4 | Rejestr §8.4 (pole po polu) i §8.5 (wymagania §10; wynik B identyczny z A bajt w bajt) | potwierdzone |
 | P4 | Trzy wersje pośrednie Premii zachowane | T4 | `fixtures/premie-od-pensji/wersje/` — 4 pliki z migawkami `execution_data.workflowData` | potwierdzone |
@@ -95,8 +95,9 @@ wypisanym) · `niezweryfikowane` (bez pomiaru) · `poza zakresem` (decyzja świa
 
 ## 7. Regresja baseline R01–R18
 
-Pełne rozliczenie: `docs/odbior-faza-1.md` §2 i §5 (2026-09-20). Wynik: **17/18 zaliczonych**,
-R07 `niezweryfikowane`. Każdy wiersz tamtej tabeli ma dowód i zrzut; tu tylko mapa na zadania:
+Pełne rozliczenie: `docs/odbior-faza-1.md` §2 i §5 (2026-09-20) + `raport-t5-odbor-uzupelniajacy.md`
+(drill E5/E7/R07 na kopii, ten dzień). Wynik: **18/18 zaliczonych**. Każdy wiersz tamtej tabeli
+ma dowód i zrzut; tu tylko mapa na zadania:
 
 | Scenariusze | Zadanie odpowiedzialne | Wynik |
 | --- | --- | --- |
@@ -105,7 +106,7 @@ R07 `niezweryfikowane`. Każdy wiersz tamtej tabeli ma dowód i zrzut; tu tylko 
 | R08 | T1 (brama sesji) + T5 | zaliczone |
 | R09, R10, R18 | T1 (stack, sieć, trwałość) + T5 | zaliczone |
 | R14, R15 | T2 (bramka MCP) + T1 (klucz agenta) + T5 | zaliczone |
-| R07 | T5 | **niezweryfikowane** — wymaga sztucznego wygaśnięcia poświadczeń |
+| R07 | T5 | **zaliczony** — drill na kopii (raport t5 §4): oba warianty, 503 przed CLI, zero procesów `claude` |
 
 ## 8. Suma dowodów — źródła
 

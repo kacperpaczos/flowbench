@@ -9,8 +9,10 @@ naprawę GLM i pełną listę ograniczeń. Szczegóły dowodowe pozostają w dok
 
 ## 0. Werdykt
 
-**Faza 1 domknięta z jawnymi ograniczeniami.** Odbiór regresji na żywym stacku:
-**17 z 18 scenariuszy zaliczonych**, R07 `niezweryfikowane` (przyczyna w §6). Kontrakt danych
+**Faza 1 domknięta z jawnymi ograniczeniami.** Odbiór regresji: **18 z 18 scenariuszy
+zaliczonych** — R07 dobił drill na kopii z 2026-09-20 (`docs/raport-t5-odbor-uzupelniajacy.md`
+§4: oba warianty, health 200 z poprawnym stanem, `/api/chat` 503, zero procesów `claude`).
+Kontrakt danych
 K1–K6 (plus K7 i K6-artefakt) potwierdzony testami i pomiarami, trzy ryzyka bezpieczeństwa
 rozstrzygnięte (R-A wdrożone, R-B wdrożone jako B2, **R-C przyjęte**), łańcuch
 czat → autorstwo → wykonanie → odczyt → widoczny wynik działa w przeglądarce.
@@ -76,7 +78,7 @@ Pełne wiersze z dowodami: `odbior-faza-1.md` §2 (wartości odniesienia) i §5 
 | R16 | Identyfikatory w odpowiedzi | **zaliczony** | tura autorska: pola niepuste, `succeeded`; pytanie: dokładne `null`; linia `WORKFLOW_ID:` nie istnieje — identyfikatory z obserwacji bramki (T3 §2.2) |
 | R17 | Menu boczne = atrapa | **zaliczony** | 0 żądań sieciowych, `iframe.src` bez zmian; aplikacja sama komunikuje atrapę |
 | R18 | Zestaw i wersje kontenerów | **zaliczony** | 5 kontenerów `Up`, obraz Dagu po digescie, n8n za profilem — tabela §1 wyżej |
-| R07 | Wygasłe poświadczenia | **niezweryfikowane** | patrz §6 |
+| R07 | Wygasłe poświadczenia | **zaliczony** (kopia, 2026-09-20) | raport t5 §4: oba warianty — „brak pliku" i „wygasły token": health 200 z poprawnym stanem i `expiresAt`, `/api/chat` 503, zero procesów `claude` |
 
 ## 4. Dowody z komendami
 
@@ -131,11 +133,11 @@ zostały.
 
 ## 6. Pominięcia
 
-* **R07 — zachowanie przy wygasłych poświadczeniach: `niezweryfikowane`.** Przyczyna:
-  weryfikacja wymaga sztucznego wygaśnięcia poświadczeń — operacji destrukcyjnej dla sesji
-  hosta (odbiór §5, wiersz R07). Ścieżka kodu jest bez zmian wobec baseline'u (503 przed
-  jakimkolwiek uruchomieniem CLI modelu); scenariusz do przejechania na kopii stacku.
-  Warstwa poświadczeń jest niezależna od silnika, więc wynik nie zależy od Dagu.
+* ~~**R07 — zachowanie przy wygasłych poświadczeniach: `niezweryfikowane`.**~~ **Zamknięte
+  2026-09-20 drillem na kopii** (`docs/raport-t5-odbor-uzupelniajacy.md` §4): oba warianty —
+  „brak pliku" i „wygasły token" — dały health 200 z poprawnym stanem i `expiresAt`,
+  `/api/chat` **503** z komunikatem zgodnym co do znaku z baseline'em i **zero** procesów
+  `claude`. Ścieżka kodu bez zmian wobec baseline'u (503 przed uruchomieniem CLI).
 * Pełne **E7** (przełączenie `git switch main` + profil `n8n` na żywym układzie) nie było
   częścią odbioru §5; odzyskanie danych n8n z backupu jest przećwiczone na kopii
   (raport T1 §1, procedura `wycofanie.md` §4).
@@ -189,7 +191,9 @@ zostały.
     (plik T2): trafia w słowo sukcesu zacytowane/zaprzeczone; werdykt pozostaje poprawny
     (bierze się ze statusu z silnika), nieprawdziwe bywa tylko zdanie wstępne komunikatu
     (raport T3 §7.5). Zgłoszone, nie naprawione.
-12. **R07 niezweryfikowane** (§6) i brak pełnego przećwiczenia E7 na żywym układzie (§6).
+12. ~~**R07 niezweryfikowane**~~ (zamknięte drillem t5, §6) i ~~brak pełnego E7~~
+    (przećwiczone na kopii — raport t5 §3; na żywym układzie celowo nie wykonywane, by nie
+    ryzykować stacku bez potrzeby — przełączenie produkcyjne to decyzja operatora).
 13. **Limity Community:** jeden użytkownik, maks. 2 klucze API (oba zajęte: `proxy-ui`,
     `agent-mcp`), brak RBAC/audit — ograniczenie edycji produktu, nie licencji (decyzja §7.2
     L1, audyt [D35]).
