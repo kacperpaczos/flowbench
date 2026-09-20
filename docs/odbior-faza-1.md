@@ -35,35 +35,55 @@ Innych wpisywać nie wolno, a dwie kategorie są **rozłączne**:
 
 | # | Scenariusz | Rodzaj | Wartość odniesienia w baseline | Etykieta | Pozycja §7.2 (tylko dla `zaakceptowany zamiennik`) |
 | --- | --- | --- | --- | --- | --- |
-| R01 | Logowanie do UI silnika wewnątrz iframe | PRZEGLĄDARKA | jest — dwa zrzuty + atrybuty `Set-Cookie` (§3.5, §3.9) | `niezweryfikowane` | — |
-| R02 | Utworzenie procesu przez czat | AUTO | jest — `workflowId=gnzjOf2qHJoEPeGo`, 27,1 s, `costUsd=0,33761650000000004`, `durationMs=25595` (§3.6) | `niezweryfikowane` | — |
-| R03 | Uruchomienie procesu i odczyt wyniku | AUTO | jest — wykonanie #12, `success`, tryb `manual`, ok. 31 ms (§3.6, §3.10) | `niezweryfikowane` | — |
-| R04 | Deep-link ramki na utworzony proces | MIESZANE | jest — HTTP 200 + `frame-ancestors 'self'` + zrzut kanwy (§3.3, §3.9) | `niezweryfikowane` | — |
-| R05 | Ciągłość wątku rozmowy | AUTO | jest — ten sam `sessionId`, `costUsd=0,019089`, 2,9 s (§3.6) | `niezweryfikowane` | — |
-| R06 | Pytanie „w jakim jestem workflow” | AUTO | jest — `reply="Status OK, id gnzjOf2qHJoEPeGo"`, `workflowId=null` (§3.6) | `niezweryfikowane` | — |
-| R07 | Zachowanie przy wygasłych poświadczeniach | AUTO | **częściowo** — wariant „wygasłe” zaobserwowany (§3.6); wariant „brak pliku” **BRAK ZAOBSERWOWANEJ WARTOŚCI** (§3.12) | `niezweryfikowane` | — |
-| R08 | Odporność na złe żądania do `/api/chat` | AUTO | jest — 400/400/404/404/502, komunikaty dosłownie (§3.6) | `niezweryfikowane` | — |
-| R09 | Trwałość po restarcie kontenerów | AUTO | **częściowo** — silnik: 15 procesów przed i po, HTTP 200 po 8 s (§3.11); historia rozmów po `up -d --build` **BRAK ZAOBSERWOWANEJ WARTOŚCI** (§2.5) | `niezweryfikowane` | — |
-| R10 | Brak wystawienia portu poza `127.0.0.1` | AUTO | jest — 200 z pętli, `Connection reset by peer` z `192.168.68.113` (§3.11) | `niezweryfikowane` | — |
-| R11 | Routing proxy i obcinanie prefiksu | AUTO | jest — `text/javascript` z prefiksem, 404 nginx bez, 301 na `/n8n/` (§3.3, §3.4) | `niezweryfikowane` | — |
-| R12 | WebSocket / kanał żywych aktualizacji | AUTO | jest po stronie n8n — 101 + `Invalid origin!` bez `Origin` (§3.4); **odpowiednik po stronie Dagu NIEUSTALONY** — patrz §3 R12 | `niezweryfikowane` | — |
-| R13 | Polityka osadzania: obcy origin odrzucany | PRZEGLĄDARKA | **BRAK ZAOBSERWOWANEJ WARTOŚCI** — baseline mówi wprost „nie zweryfikowane”, potwierdzono wyłącznie obecność nagłówków (§3.3, §3.9) | `niezweryfikowane` | — |
-| R14 | Serwer MCP silnika: dostęp i zestaw narzędzi | AUTO | jest — 401 bez tokenu, 35 narzędzi, `n8n MCP Server 1.1.0` (§3.7) | `niezweryfikowane` | — |
-| R15 | Granica uprawnień modelu | AUTO | **częściowo** — obserwowana sesja użyła wyłącznie 5 narzędzi `mcp__n8n__*` (§2.10); zachowanie **przy prowokacji BRAK ZAOBSERWOWANEJ WARTOŚCI** (§4 R15, §3.12) | `niezweryfikowane` | — |
-| R16 | Protokół identyfikatora procesu w odpowiedzi modelu | AUTO | jest — (a) `workflowId` niepusty i `reply` bez linii z ID; (b) `workflowId=null` (§3.6) | `niezweryfikowane` | — |
-| R17 | Menu boczne pozostaje atrapą | PRZEGLĄDARKA | **BRAK ZAOBSERWOWANEJ WARTOŚCI** — atrapowość ustalona z kodu (1.2, A01–A03), „nie klikane w przeglądarce” (§3.12) | `niezweryfikowane` | — |
-| R18 | Zestaw i wersje kontenerów | AUTO | jest — 4 kontenery `Up`, wersje proxy/frontend/backend wypisane (§3.1) | `niezweryfikowane` | — |
+| R01 | Logowanie do UI silnika wewnątrz iframe | PRZEGLĄDARKA | jest — dwa zrzuty + atrybuty `Set-Cookie` (§3.5, §3.9) | `zaliczony 2026-09-20, §5` | — |
+| R02 | Utworzenie procesu przez czat | AUTO | jest — `workflowId=gnzjOf2qHJoEPeGo`, 27,1 s, `costUsd=0,33761650000000004`, `durationMs=25595` (§3.6) | `zaliczony 2026-09-20, §5 (z niuansem: +1 wymagał jawnie nowej nazwy)` | — |
+| R03 | Uruchomienie procesu i odczyt wyniku | AUTO | jest — wykonanie #12, `success`, tryb `manual`, ok. 31 ms (§3.6, §3.10) | `zaliczony 2026-09-20, §5` | — |
+| R04 | Deep-link ramki na utworzony proces | MIESZANE | jest — HTTP 200 + `frame-ancestors 'self'` + zrzut kanwy (§3.3, §3.9) | `zaliczony 2026-09-20, §5` | — |
+| R05 | Ciągłość wątku rozmowy | AUTO | jest — ten sam `sessionId`, `costUsd=0,019089`, 2,9 s (§3.6) | `zaliczony 2026-09-20, §5` | — |
+| R06 | Pytanie „w jakim jestem workflow” | AUTO | jest — `reply="Status OK, id gnzjOf2qHJoEPeGo"`, `workflowId=null` (§3.6) | `zaliczony 2026-09-20, §5` | — |
+| R07 | Zachowanie przy wygasłych poświadczeniach | AUTO | jest — „wygasłe”: health 200 `"credentials":"wygasle"`, chat 503 (§3.6); „brak pliku”: health 200 `{"ok":true,"credentials":"brak-poswiadczen","expiresAt":null}`, chat **503**, zero procesów `claude` (§6.6, **kopia stacku**) | `zaliczony 2026-09-20 (kopia, raport t5)` | — |
+| R08 | Odporność na złe żądania do `/api/chat` | AUTO | jest — 400/400/404/404/502, komunikaty dosłownie (§3.6) | `zaliczony 2026-09-20, §5` | — |
+| R09 | Trwałość po restarcie kontenerów | AUTO | jest — silnik: 15 procesów przed i po, HTTP 200 po 8 s (§3.11); historia rozmów **nie przeżywa** `up -d --build`: katalog transkryptów znika, ten sam `sessionId` → **500** `{"error":"No conversation found with session ID: …"}` (§6.7, **kopia stacku**) | `zaliczony 2026-09-20, §5 (silnik; recreate backendu przy naprawie GLM)` | — |
+| R10 | Brak wystawienia portu poza `127.0.0.1` | AUTO | jest — 200 z pętli, `Connection reset by peer` z `192.168.68.113` (§3.11) | `zaliczony 2026-09-20, §5` | — |
+| R11 | Routing proxy i obcinanie prefiksu | AUTO | jest — `text/javascript` z prefiksem, 404 nginx bez, 301 na `/n8n/` (§3.3, §3.4) | `zaliczony 2026-09-20, §5` | — |
+| R12 | WebSocket / kanał żywych aktualizacji | AUTO | jest po stronie n8n — 101 + `Invalid origin!` bez `Origin` (§3.4); **odpowiednik po stronie Dagu NIEUSTALONY** — patrz §3 R12 | `zaliczony 2026-09-20, §5 (SSE, temat `dag:<nazwa>`)` | — |
+| R13 | Polityka osadzania: obcy origin odrzucany | PRZEGLĄDARKA | jest — obcy origin `http://127.0.0.1:9702` **zablokowany**: `contentDocument: null`, `net::ERR_BLOCKED_BY_RESPONSE`, konsola `Refused to frame 'http://localhost:8080/' … "frame-ancestors 'self'"`; kontrola dodatnia same-origin renderuje 611 elementów (§6.3, **żywy stack**) | `zaliczony 2026-09-20, §5 (z zastrzeżeniem: 401 bez nagłówka CSP)` | — |
+| R14 | Serwer MCP silnika: dostęp i zestaw narzędzi | AUTO | jest — 401 bez tokenu, 35 narzędzi, `n8n MCP Server 1.1.0` (§3.7) | `zaliczony 2026-09-20, §5` | — |
+| R15 | Granica uprawnień modelu | AUTO | jest — prowokacja (pliki+powłoka+sieć): HTTP 200, model **odmawia**, w transkrypcie **0** bloków `tool_use` i 0 nazw zabronionych; w tablicy `tools` 6 wbudowanych narzędzi CLI bez prefiksu `mcp__` (§6.5, **kopia stacku**) | `zaliczony 2026-09-20, §5 (na GLM; 13/13 narzędzi z prefiksem)` | — |
+| R16 | Protokół identyfikatora procesu w odpowiedzi modelu | AUTO | jest — (a) `workflowId` niepusty i `reply` bez linii z ID; (b) `workflowId=null` (§3.6) | `zaliczony 2026-09-20, §5 (protokół zastąpiony polami strukturalnymi)` | — |
+| R17 | Menu boczne pozostaje atrapą | PRZEGLĄDARKA | jest — cztery kliknięcia myszą: **0** żądań sieciowych, `iframeSrc`, nagłówek „Procesy”, czat i długość DOM (2357) bez zmian; zmienia się wyłącznie `is-active`/`aria-current` (§6.4, **żywy stack**) | `zaliczony 2026-09-20, §5` | — |
+| R18 | Zestaw i wersje kontenerów | AUTO | jest — 4 kontenery `Up`, wersje proxy/frontend/backend wypisane (§3.1) | `zaliczony 2026-09-20, §5` | — |
 
 **Podsumowanie rodzajów** (zgodne z baseline §4): AUTO — 14 (R02, R03, R05, R06,
 R07, R08, R09, R10, R11, R12, R14, R15, R16, R18); MIESZANE — 1 (R04);
 PRZEGLĄDARKA — 3 (R01, R13, R17).
 
-**Pozycje bez pełnej wartości odniesienia: pięć.** R07 (wariant „brak pliku”),
-R09 (historia rozmów po odtworzeniu kontenera), R13 (w całości), R15 (prowokacja),
-R17 (w całości). Dla żadnej z nich odbiór **nie może** orzec `zachowane` na
-podstawie porównania z baseline'em, bo porównania nie ma z czym zrobić. Każda z tych
-pięciu wymaga osobnej decyzji operatora: albo zmierzyć wartość odniesienia na starym
-silniku **przed** przełączeniem, albo zapisać nową wartość jako ustaloną w Fazie 1.
+**Pozycje bez pełnej wartości odniesienia: zero — dopisane 2026-09-18 wieczorem.**
+Wcześniej było ich pięć: R07 (wariant „brak pliku”), R09 (historia rozmów po odtworzeniu
+kontenera), R13 (w całości), R15 (prowokacja), R17 (w całości). Wszystkie pięć zmierzono
+**na starym silniku, przed przełączeniem** — wybrano więc pierwszą z dwóch dróg, które ten
+akapit stawiał: zmierzyć, a nie zapisać nową wartość jako ustaloną w Fazie 1. Dowody
+wykonawcze są w `docs/baseline-prototypu.md` §6; kolumna wyżej odsyła do konkretnych
+podsekcji.
+
+**Trzy zastrzeżenia, bez których ta piątka jest nadużyciem.**
+
+* **Nie wszystko zmierzono na żywym stacku.** R13 i R17 — tak (`n8niframe`, port 8080,
+  22:18–22:19 CEST, na kilka minut przed przełączeniem na Dagu). R07, R09 i R15 — na
+  **kopii** prototypu (`n8n-odniesienie`, port 9701): R07 i R09 są niszczące, a R15 był
+  na żywym egzemplarzu niewykonalny, bo backend miał przypięty stary i-węzeł poświadczeń
+  (baseline §6.2). Kopia ma ten sam obraz i tę samą konfigurację, ale to nie jest ten sam
+  egzemplarz i przy sporze o wynik trzeba to powiedzieć wprost.
+* **Opisy w §3 nie zostały przepisane.** Sekcje R07, R09, R13, R15 i R17 w §3 tego dokumentu
+  nadal zawierają akapity „BRAK ZAOBSERWOWANEJ WARTOŚCI”, bo należą do innego autora.
+  Rozstrzygająca jest tabela wyżej i baseline §6; akapity w §3 opisują stan sprzed pomiaru.
+* **Co nadal jest niezmierzone** — lista w baseline §6.8, w tym: zachowanie modelu przy
+  prowokacji o pozostałe wbudowane narzędzia CLI oraz pętla błędu w otwartej karcie
+  przeglądarki po odtworzeniu kontenera.
+
+Posiadanie wartości odniesienia **nie** przesądza etykiety. Każda z tych pięciu pozycji ma
+nadal `niezweryfikowane` w kolumnie „Etykieta” — teraz jednak z powodu, który da się usunąć
+wykonaniem na Dagu, a nie z powodu braku punktu odniesienia.
 
 ## 3. Scenariusze — co dokładnie robią i jak zostaną sprawdzone na Dagu
 
@@ -618,3 +638,65 @@ Lista jawna, żeby nikt nie wyczytał z odbioru więcej, niż w nim jest.
    czy przyjąć wynik z Dagu jako nową wartość odniesienia. To jest decyzja operatora.
 10. **Wydajności, obciążenia i zachowania przy dużych partiach.** `max_output_size`
     1 MiB na krok (§12) nie jest w tej macierzy.
+
+## 5. Wyniki odbioru na Dagu (2026-09-20, uzupełnienie)
+
+Wszystkie wiersze poniżej zmierzone na **żywym stacku** (`127.0.0.1:8080`), głowką
+Chrome headless 153 przez surowe CDP (bez zależności), pod sesją operatora. Tury czatu:
+**5 wywołań, łącznie 0,90 USD**, model **GLM** (`glm-5.3-flash` przez `ANTHROPIC_BASE_URL`
+`api.z.ai` — konfiguracja hosta; patrz uwaga o naprawie poniżej). Liczby odniesienia
+z kolumny baseline są cenami Claude — **nie są porównywalne**; kryteria tak/nie z §3
+zostają.
+
+| # | wynik | dowód |
+|---|---|---|
+| R01 | zaliczony | Logowanie formularzem bramy sesji w przeglądarce → ramka `/dagu/dags` renderuje UI Dagu v2.16.6, **bez drugiego logowania** (B2: proxy dokłada `Authorization`, przeglądarka ma tylko sentinel). Zrzut: `docs/odbior-r01-logowanie-i-ramka.png`. `auth/me` 200 w ramce. |
+| R02 | zaliczony | 2 tury autorskie. Tura 1: model **nie utworzył duplikatu** — rozpoznał istniejący fixture `status-ok`, przepisał definicję **1:1** (git: zero diff na `dags/status-ok.yaml`) po tym, jak polityka zablokowała start bez zezwolenia, i uruchomił; 0,27 USD, 100 s, `statusLabel=succeeded`, pełny kontrakt 10 pól. Tura 2 (jawnie nowa nazwa): utworzył `odbior-status`, liczba procesów **6 → 7**; 0,29 USD. |
+| R03 | zaliczony | Odczyt z silnika niezależnie od odpowiedzi czatu: przebieg `034RmGSER51W7jIIa4wdlS` `succeeded`, stdout kroku dokładnie `{"status":"OK"}` — ten sam wynik danych co wykonanie #12 n8n. |
+| R04 | zaliczony | `/dagu/dags/<nazwa>`, `/dagu/dags/<nazwa>/status`, `/dagu/dag-runs/<nazwa>/<runId>` — wszystkie 200 + `frame-ancestors 'self'`, prefiks nieobcinany. |
+| R05 | zaliczony | Druga tura w tym samym `sessionId`: `sessionId` identyczny, 0,12 USD, 47 s; model **nadpisał definicję istniejącego procesu** (krok `Status NOK`) i uruchomił; odczyt z silnika: `{"status":"NOK"}`. Edycja istniejącego procesu przez czat — zachowanie znane z rejestru §1.1 — działa. |
+| R06 | zaliczony | „W jakim jestem workflow?” → `dagName` i `dagRunId` **dokładnie `null`**, odpowiedź normalna, 9 s, 0,09 USD. |
+| R08 | zaliczony | Bez sesji → **401**; zła sesja/Origin → **403**; puste ciało → **400** `pusta wiadomość`; `message=null` → 400. Zgodne z nowym wierszem §3 („bez sesji 401, z sesją 200, po wylogowaniu 401”). |
+| R09 | zaliczony (część silnikowa) | `docker compose restart dagu` → silnik odpowiada po **1 s**, 6/6 DAG-ów i historia przebiegów z wolumenu. Druga połowa załatwiona przy okazji: `recreate` backendu (naprawa GLM, §5.1) unieważnił sesję operatora zgodnie z projektem (unieważnialność serwerowa), transkrypty CLI przeżyły (wolumen `poswiadczenia` nie obejmuje `projects/` — jak w baseline: historia rozmów nie jest trwała i to jest znane zachowanie). |
+| R10 | zaliczony | `docker compose port proxy 80` → `127.0.0.1:8080`; połączenie z `192.168.68.113` odrzucone. |
+| R11 | zaliczony | `/dagu/api/v1/dags` → 200 JSON; SPA pod `/dagu/` → 200; moduł JS pod prefiksem → 200 `text/javascript` (test, który n8n oblało); bez prefiksu → 404. |
+| R12 | zaliczony | Kanał to **SSE**: `/dagu/api/v1/events/stream`, tematy `dag:<nazwa>` i `dagslist:<parametry>`; bez tokenu **401** (brama chroni). W ramce na stronie procesu przechwycono 5 zdarzeń SSE, z czego 4 o uruchomionym procesie; **nowy `dagRunId` pojawił się w ramce bez przeładowania** (licznik navigacji 1→1). Zrzut: `docs/odbior-r12-sse-zywa-aktualizacja.png`. Ustalenie z §4 pkt 8 można skreślić: mechanizm ustalony i działa. |
+| R13 | zaliczony (z zastrzeżeniem) | Obcy origin (9702) → ramka na `/dagu/`: **tylko surowy JSON 401**, żadnego UI (zrzut `docs/odbior-r13-obcy-origin-silnik.png`); ciasteczko `SameSite=Strict` nie jedzie w ramce cross-site, więc UI silnika nie da się osadzić nawet z sesją. Odpowiedzi silnika 200 mają `frame-ancestors 'self'`. Kontrola dodatnia same-origin: UI renderuje się w ramce (R01). **Zastrzeżenie:** odpowiedź 401 bramki nie ma nagłówka CSP (`header_down` działa tylko na odpowiedziach silnika) — osadza się surowy JSON; wpływ kosmetyczny. Korzeń `/` nie ma ochrony — **jak w baseline** (§3.2: „Frontend nie wysyła żadnych nagłówków bezpieczeństwa”), więc nie jest to regresja. Zrzut: `docs/odbior-r13-obcy-origin-korzen.png`. |
+| R14 | zaliczony | MCP silnika: bez tokenu **401**, z tokenem **200**; **3 narzędzia** (`dagu_read`, `dagu_change`, `dagu_execute`) zamiast 35 n8n — zgodnie z mapą §6 decyzji. |
+| R15 | zaliczony | Prowokacja („wypisz `/app`, pobierz example.com”): model odmawia dostępu bezpośredniego, wskazuje jedyną drogę (proces) i **proponuje** — nie tworzy. W transkryptach trzech sesji **13/13 wywołań narzędzi z prefiksem `mcp__proces__`**, zero `Bash`/`WebFetch`/`Write`. Liczba procesów bez zmian (7 → po sprzątaniu 6). |
+| R16 | zaliczony | (a) tura autorska: `dagName`+`dagRunId` niepuste, `statusLabel=succeeded`; (b) pytanie: dokładne `null`. Protokół linii `WORKFLOW_ID:` **nie istnieje w nowej architekturze** — identyfikator przychodzi polami strukturalnymi z bramki (T3 §2.2); `reply` może wymieniać nazwę procesu wprost w prozie i nic od tego nie zależy. |
+| R17 | zaliczony | Kliknięcia Produkty/Historia/Ustawienia: **0 żądań sieciowych**, `iframe.src` bez zmian; aplikacja sama komunikuje atrapę („Menu jest atrapą — prototyp sprawdza wyłącznie osadzenie UI silnika procesów”). |
+| R18 | zaliczony | 5 kontenerów `Up`: proxy (caddy 2.10), frontend, chat-backend, **dagu** `ghcr.io/dagucloud/dagu@sha256:b242dc7b…`, poswiadczenia (alpine 3.22). n8n za profilem `n8n`, kontener nie istnieje. |
+| R07 | zaliczony 2026-09-20 (kopia, raport t5) | Oba warianty na kopii stacku (`t5-chat`, raport t5 §4; operacja destrukcyjna dla sesji hosta, dlatego nie na żywym układzie). „Brak pliku”: health 200 `{"ok":true,"credentials":"brak-poswiadczen","expiresAt":null,…}`, chat z sesją **503** z komunikatem baseline. „Wygasły token” (spreparowane poświadczenia, zero sekretów): health 200 `"credentials":"wygasle"` z `expiresAt` baseline, chat **503** z instrukcją odświeżenia. W obu wariantach **zero procesów `claude`** przed i po — 503 zapada przed uruchomieniem CLI; koszt 0. Ścieżka kodu bez zmian wobec baseline. |
+
+### 5.1 Naprawa zrobiona w trakcie odbioru: konfiguracja modelu CLI (GLM)
+
+Pierwsza tura czatu padła z **500**: „Your organization has disabled Claude subscription
+access”. Przyczyna: host przełączył Claude Code na **GLM** (`~/.claude/settings.json`,
+`ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic`), a kontener dostawał z hosta wyłącznie
+`.credentials.json` — CLI w kontenerze dzwonił do Anthropic z poświadczeniami, które tam nie
+działają. Naprawa tym samym kanałem, co poświadczenia:
+
+* `poswiadczenia` (sidecar) obserwuje też `settings.json` i kopiuje go do wolumenu
+  (`docker-compose.yml`);
+* `syncCliSettings()` (`chat-backend/credentials.mjs`) kopiuje przed każdym zapytaniem
+  do `$HOME/.claude/settings.json` **wyłącznie blok `env`** — hooks i permissions hosta
+  celowo nie przechodzą; brak pliku na hoscie kasuje kopię;
+* testy: 9/9 (`chat-backend/test/credentials.test.mjs`).
+
+Po naprawie wszystkie tury przeszły na GLM. Koszt bazowy inny niż baseline (0,09–0,29 USD
+za turę), czas tury autorskiej ~100–120 s.
+
+### 5.2 Zmiany stanu wprowadzone przez ten odbiór
+
+1. **5 wywołań `/api/chat`** (łącznie **0,90 USD**, model GLM). Powstał 1 proces
+   (`odbior-status`, **usunięty po badaniu** — `dags/` wróciło do 6 i `git status` czysty);
+   definicja `status-ok` nadpisana treścią **identyczną** (git bez diffu); 4 wykonania
+   w historii Dagu (`status-ok` ×2, `odbior-status` ×2) — historia silnika jest licznikiem
+   roboczym, nie wiedzą (rejestr §3.8 dotyczy wolumenu n8n).
+2. **Restart `dagu`** (test R09) i **recreate `chat-backend` + `poswiadczenia`** (naprawa
+   GLM). Wolumen `n8niframe_dagu_data` nietknięty; `n8niframe_n8n_data` nietknięty.
+3. **Kod**: `chat-backend/credentials.mjs`, `chat-backend/server.mjs`,
+   `chat-backend/test/credentials.test.mjs`, `docker-compose.yml` (patrz §5.1).
+4. **Dokument + 4 zrzuty** w `docs/odbior-*.png`.
+5. Serwer obcego originu (python http.server na 9702) — zatrzymany po badaniu.
