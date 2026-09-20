@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
-import { credentialStatus, syncCredentials } from './credentials.mjs'
+import { credentialStatus, syncCredentials, syncCliSettings } from './credentials.mjs'
 import { wczytajBrameSesji } from './brama-sesji.mjs'
 import {
   wczytajRejestr, utworzRejestrZezwolen, utworzKlienta, uruchomSerwerMcp,
@@ -18,6 +18,9 @@ const MCP_CONFIG = '/app/mcp.json'
 const TIMEOUT_MS = 420_000
 const CRED_SEED = '/seed/.credentials.json'
 const CRED_LIVE = `${process.env.HOME}/.claude/.credentials.json`
+// Konfiguracja modelu (np. GLM na hoscie) - patrz syncCliSettings w credentials.mjs.
+const SETTINGS_SEED = '/seed/settings.json'
+const SETTINGS_LIVE = `${process.env.HOME}/.claude/settings.json`
 
 // Czekanie na domkniecie przebiegu, gdy model wrocil przed silnikiem. Budzet jest
 // swiadomie duzo mniejszy niz TIMEOUT_MS - po jego uplywie mowimy "w toku",
@@ -463,6 +466,8 @@ async function obsluzCzat(req, res) {
     return json(res, 503, { error: creds.message })
   }
   syncCredentials(CRED_SEED, CRED_LIVE)
+  const ustawienia = syncCliSettings(SETTINGS_SEED, SETTINGS_LIVE)
+  if (!ustawienia.ok) console.error('ustawienia cli:', ustawienia.powod)
 
   try {
     const { odpowiedz, obserwacja } = await wKolejce(async () => {

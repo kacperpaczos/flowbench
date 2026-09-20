@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtempSync, writeFileSync, readFileSync, statSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { credentialStatus, syncCredentials, SKEW_MS } from '../credentials.mjs'
+import { credentialStatus, syncCredentials, syncCliSettings, SKEW_MS } from '../credentials.mjs'
 
 const dir = mkdtempSync(join(tmpdir(), 'creds-'))
 const seed = join(dir, 'seed.json')
@@ -52,4 +52,42 @@ test('powtorny sync nadpisuje stara kopie nowa trescia z hosta', () => {
   syncCredentials(seed, live)
   assert.notEqual(readFileSync(live, 'utf8'), stary)
   assert.equal(readFileSync(live, 'utf8'), readFileSync(seed, 'utf8'))
+})
+
+test('syncCliSettings: przenosi wylacznie blok env, prawa 600', () => {
+  const seedS = join(dir, 'settings.json')
+  const liveS = join(dir, 'nested', 'settings-live.json')
+  writeFileSync(seedS, JSON.stringify({
+    env: { ANTHROPIC_BASE_URL: 'https://api.z.ai/api/anthropic', ANTHROPIC_AUTH_TOKEN: 'x' },
+    hooks: { PreToolUse: [{ matcher: '*', hooks: [{ type: 'command', command: 'evil' }] }] },
+    permissions: { defaultMode: 'auto' },
+  }))
+  const r = syncCliSettings(seedS, liveS)
+  assert.equal(r.ok, true)
+  assert.deepEqual(r.klucze, ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_BASE_URL'])
+  const zapisane = JSON.parse(readFileSync(liveS, 'utf8'))
+  assert.deepEqual(Object.keys(zapisane), ['env'])
+  assert.equal(zapisane.env.ANTHROPIC_BASE_URL, 'https://api.z.ai/api/anthropic')
+  assert.equal((statSync(liveS).mode & 0o777), 0o600)
+  assert.equal('hooks' in zapisane, false)
+  assert.equal('permissions' in zapisane, false)
+})
+
+test('syncCliSettings: brak pliku na hoscie kasuje kopie (nie zostaje zmyślona konfiguracja)', () => {
+  const liveS = join(dir, 'nested', 'settings-live.json')
+  const r = syncCliSettings(join(dir, 'nie-ma.json'), liveS)
+  assert.equal(r.ok, false)
+  assert.equal(r.powod, 'brak-pliku')
+  assert.throws(() => statSync(liveS))
+})
+
+test('syncCliSettings: blok env bez zadanego pola env kasuje kopie', () => {
+  const seedS = join(dir, 'settings-bez-env.json')
+  const liveS = join(dir, 'nested', 'settings-live2.json')
+  writeFileSync(seedS, JSON.stringify({ permissions: { defaultMode: 'auto' } }))
+  syncCliSettings(seedS, liveS)
+  const r = syncCliSettings(seedS, liveS)
+  assert.equal(r.ok, false)
+  assert.equal(r.powod, 'brak-bloku-env')
+  assert.throws(() => statSync(liveS))
 })

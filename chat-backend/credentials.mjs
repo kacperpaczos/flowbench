@@ -1,4 +1,4 @@
-import { copyFileSync, chmodSync, mkdirSync, readFileSync } from 'node:fs'
+import { copyFileSync, chmodSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 
 /**
@@ -57,4 +57,43 @@ export function syncCredentials(seedPath, livePath) {
   mkdirSync(dirname(livePath), { recursive: true })
   copyFileSync(seedPath, livePath)
   chmodSync(livePath, 0o600)
+}
+
+/**
+ * Konfiguracja modelu CLI (settings.json na hoscie, np. przelaczenie na GLM przez
+ * ANTHROPIC_BASE_URL) jedzie tym samym kanalem co poswiadczenia: sidecar
+ * `poswiadczenia` obserwuje plik na hoscie, backend kopiuje go do $HOME/.claude
+ * przed kazdym zapytaniem.
+ *
+ * Z settings.json przenosimy WYLACZNIE blok "env". Reszta (hooks, permissions)
+ * jest konfiguracja srodowiska hosta i w kontenerze ma prawouterwnie nie dzialac -
+ * zabranie jej byle jakim sposobem moglo by zmienic zachowanie CLI w kontenerze
+ * w sposob, ktorego nikt nie akceptowal.
+ *
+ * Brak pliku na hoscie kasuje kopie w kontenerze - inaczej po wylogowaniu modeli
+ * na hoscie kontener biegalby dalej na zmyślonej konfiguracji.
+ */
+export function syncCliSettings(seedPath, livePath) {
+  let raw
+  try {
+    raw = readFileSync(seedPath, 'utf8')
+  } catch {
+    try { unlinkSync(livePath) } catch {}
+    return { ok: false, powod: 'brak-pliku' }
+  }
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch (e) {
+    return { ok: false, powod: 'niepoprawny-json', blad: String(e.message ?? e) }
+  }
+  const env = parsed?.env
+  if (!env || typeof env !== 'object' || Array.isArray(env)) {
+    try { unlinkSync(livePath) } catch {}
+    return { ok: false, powod: 'brak-bloku-env' }
+  }
+  mkdirSync(dirname(livePath), { recursive: true })
+  writeFileSync(livePath, JSON.stringify({ env }, null, 2))
+  chmodSync(livePath, 0o600)
+  return { ok: true, klucze: Object.keys(env).sort() }
 }

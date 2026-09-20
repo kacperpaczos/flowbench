@@ -233,24 +233,36 @@ services:
       - -c
       - |
         set -eu
-        ZRODLO=/host-claude/.credentials.json
-        CEL=/poswiadczenia/.credentials.json
-        echo "posrednik poswiadczen: obserwuje $$ZRODLO co 5 s"
-        while :; do
+        # Jeden mechanizm, dwa pliki: poswiadczenia (obowiazkowy) i settings.json
+        # (opcjonalny - konfiguracja modelu CLI na hoscie, np. przelaczenie na GLM
+        # przez ANTHROPIC_BASE_URL; backend czyta z niego wylacznie blok "env",
+        # patrz syncCliSettings w chat-backend/credentials.mjs).
+        sledz() {
+          ZRODLO="$$1"; CEL="$$2"; SUMA="$$3"; OPIS="$$4"; WYMAGANY="$$5"
           if [ -f "$$ZRODLO" ]; then
             NOWA=$$(sha256sum "$$ZRODLO" | cut -d' ' -f1)
-            STARA=$$(cat /poswiadczenia/.suma 2>/dev/null || echo brak)
+            STARA=$$(cat "$$SUMA" 2>/dev/null || echo brak)
             if [ "$$NOWA" != "$$STARA" ]; then
               # Plik tymczasowy w TYM SAMYM katalogu, potem mv - podmiana atomowa.
               cp "$$ZRODLO" "$$CEL.tmp"
               chmod 600 "$$CEL.tmp"
               mv "$$CEL.tmp" "$$CEL"
-              printf '%s' "$$NOWA" > /poswiadczenia/.suma
-              echo "poswiadczenia odswiezone $$(date -Is) suma=$${NOWA%$${NOWA#????????}}..."
+              printf '%s' "$$NOWA" > "$$SUMA"
+              echo "$$OPIS odswiezone $$(date -Is) suma=$${NOWA%$${NOWA#????????}}..."
             fi
           else
-            echo "UWAGA: brak $$ZRODLO na hoscie - czat nie bedzie mogl sie uwierzytelnic"
+            rm -f "$$CEL" "$$SUMA"
+            if [ "$$WYMAGANY" = tak ]; then
+              echo "UWAGA: brak $$ZRODLO na hoscie - czat nie bedzie mogl sie uwierzytelnic"
+            fi
           fi
+        }
+        echo "posrednik poswiadczen: obserwuje /host-claude co 5 s"
+        while :; do
+          sledz /host-claude/.credentials.json /poswiadczenia/.credentials.json \
+                /poswiadczenia/.suma "poswiadczenia" tak
+          sledz /host-claude/settings.json /poswiadczenia/settings.json \
+                /poswiadczenia/.suma-settings "ustawienia cli" nie
           sleep 5
         done
 
