@@ -1,8 +1,9 @@
 # Rejestr workflow w wolumenie `n8niframe_n8n_data`
 
-Data: 2026-09-18. Faza 1 migracji n8n → Dagu. Dokument rozlicza **każdy** obiekt wiedzy
-w silniku n8n z osobna, żeby wymiana silnika nie odbyła się kosztem czegoś, czego nikt
-nie policzył.
+Data: 2026-09-18, **uzupełniony i skorygowany 2026-09-19** (drugie przejście, już po
+wymianie silnika — patrz §0.1 i §5). Faza 1 migracji n8n → Dagu. Dokument rozlicza **każdy**
+obiekt wiedzy w silniku n8n z osobna, żeby wymiana silnika nie odbyła się kosztem czegoś,
+czego nikt nie policzył.
 
 Podstawa: `docs/baseline-prototypu.md` §3.10 i §5 (pozycje W01–W10),
 `docs/decyzja-architektoniczna.md`, `docs/audyt-dagu.md`.
@@ -47,6 +48,33 @@ potwierdzenie istnieje od strony interfejsu.
 
 **12 wykonań** (id 1–12), wszystkie `success`, wszystkie w trybie `manual`. Baseline mówił
 „11 + 1" — to ta sama liczba, zapisana inaczej.
+
+### 0.1 Ponowna weryfikacja po wymianie silnika (2026-09-19)
+
+Między pierwszym a drugim przejściem stack został przełączony na Dagu: kontener
+`n8niframe-n8n` **już nie istnieje**, biegnie `n8niframe-dagu`. Pierwsze, co sprawdziłem, to
+czy wolumen przeżył. Przeżył:
+
+```
+$ docker volume ls | grep n8n_data
+n8niframe_n8n_data
+
+$ docker run --rm -v n8niframe_n8n_data:/data:ro alpine du -sh /data
+2.2M    /data
+
+$ pragma integrity_check   (na kopii, mode=ro)          -> ok
+  workflow_entity   15      execution_entity  12
+  workflow_history  15      user_api_keys      1
+  credentials_entity 0      variables          0      tag_entity 0      project 1
+```
+
+**Liczby zgadzają się z pierwszym przejściem co do jednej.** Dwie zmiany są techniczne
+i niegroźne: WAL został scalony przy czystym zamknięciu n8n (`database.sqlite` 2 129 920 →
+2 207 744 B, `-wal` 914 672 → 8 272 B), więc dane przeszły z dziennika do pliku głównego.
+
+Jedna zmiana **nie** jest niegroźna: dziennik zdarzeń stracił w rotacji ok. 78 KB — patrz
+§3.9. Od drugiego przejścia REST API n8n jest niedostępne, więc wszystko poniżej pochodzi
+z kopii bazy otwartej `mode=ro`.
 
 ### Skąd wiem, co powstało ręcznie, a co przez czat
 
@@ -128,6 +156,36 @@ Trzy wersje pośrednie **nie istnieją w tabeli `workflow_history`** — ta trzy
 wersje pośrednie przetrwały, są migawki `execution_data.workflowData`. Wniosek praktyczny:
 skasowanie historii wykonań kasuje też historię edycji.
 
+### 1.2 Nikt nigdy nie przesunął węzła
+
+Sprawdziłem współrzędne wszystkich węzłów we wszystkich 15 workflow. **15/15 leży w jednym
+rzędzie, na dokładnych wielokrotnościach 224 pikseli** — czyli tam, gdzie postawił je edytor
+albo generator, co do piksela:
+
+```
+RZgNoMeoDQro7TPF  [(0,0)]
+ZAo64C4IErU2Wafe  [(0,0), (224,0)]          ← i tak samo 8 kolejnych
+ag3nCPjnADFqUADE  [(0,0), (224,0), (448,0)]
+aEUUAnNsUr7LJIyr  [(0,0), (224,0), (448,0), (1344,0), (672,0), (896,0), (1120,0)]
+```
+
+Dwa wnioski.
+
+**Pierwszy — to domyka pytanie o intencję dziewięciu ręcznych.** Wszystkie dziewięć ma węzły
+na `(0,0)` i `(224,0)`, czyli w domyślnym rozstawieniu szablonu „nowy workflow", i identyczne
+`settings` (`{"executionOrder":"v1","binaryMode":"separate"}`). Cztery egzemplarze
+„Prototyp iframe - test" są po normalizacji identyfikatorów **bajt w bajt identyczne**.
+To nie są projekty procesów — to powtarzane przechodzenie ścieżki „utwórz → wpisz wartość →
+zapisz" w ramce. Klasyfikacji to nie zmienia; wypełnia lukę, którą pierwsza wersja tego
+dokumentu zostawiła jako nierozstrzygniętą.
+
+**Drugi jest ważniejszy i wykracza poza ten rejestr.** `decyzja-architektoniczna.md` §7 pkt 1
+nazywa brak edytora drag-and-drop „prawdziwą utratą funkcji wobec n8n, przyjętą decyzją
+operatora". Dane mówią, że **ta funkcja nie została w tym prototypie użyta ani razu** —
+przez cztery dni, w 15 procesach, nikt nie przeciągnął ani jednego węzła. Utrata jest realna
+co do zasady, ale jej zmierzone wykorzystanie wynosi zero. Nie zmieniam cudzej decyzji;
+podaję liczbę, której przy jej podejmowaniu nie było.
+
 ---
 
 ## 2. Klasyfikacja migracyjna
@@ -196,12 +254,27 @@ admin i hasło w pliku konfiguracyjnym (decyzja §5, R-C), nie w `environment:`.
 | plik | `/home/node/.n8n/config`, **56 B**, uprawnienia `-rw-------` |
 | zawartość | jedno pole `encryptionKey`, 32 znaki |
 
-**Czy potrzebny po migracji: NIE — i to jest ustalone, nie założone.** Klucz służy wyłącznie
-do odszyfrowania zapisanych poświadczeń. Poświadczeń nie ma ani jednego (§3.4), więc klucz
-nie chroni niczego. Baseline (W05) zostawiał to pytanie otwarte — „jeśli ktoś je dodał,
-plik trzeba zachować". Odpowiedź brzmi: nikt nie dodał, licznik wynosi zero.
+**Czy potrzebny po migracji: prawie nie — ale nie „wcale", i tę różnicę trzeba wypowiedzieć.**
+Klucz służy do odszyfrowania zapisanych poświadczeń. Poświadczeń nie ma ani jednego (§3.4),
+więc baseline'owe pytanie z W05 („jeśli ktoś je dodał, plik trzeba zachować") ma odpowiedź:
+nikt nie dodał, licznik wynosi zero.
 
-**Co się z nim dzieje:** ginie razem z wolumenem. Bez konsekwencji.
+> **Korekta wobec pierwszej wersji tego dokumentu.** Napisałem tu wcześniej, że klucz
+> „nie chroni niczego". To było za mocne. Skan surowych bajtów bazy pokazał **cztery**
+> wystąpienia markera `U2FsdGVkX1` (base64 nagłówka `Salted__`, czyli szyfrogram crypto-js
+> AES, którym n8n szyfruje pola wrażliwe). Wszystkie siedzą w `execution_data.data`
+> trzech wykonań — **#1, #2 i #7** — pod kluczem `credentials` w strukturze czasu wykonania
+> (`{version, establishedAt, source, triggerNode, redaction, credentials}`). Każdy blob ma
+> dokładnie **536 znaków**, we wszystkich trzech tyle samo. Szczegóły w §3.8.
+>
+> Klucz szyfrowania jest **jedyną rzeczą, która potrafi te trzy blob-y odczytać.**
+> Nie odszyfrowałem ich — zlecenie zabrania drukowania zawartości pola `credentials` — więc
+> **nie wiem, co w nich jest**, i nikt tego dotąd nie ustalił.
+
+**Co się z nim dzieje:** zostaje w wolumenie razem z tymi trzema blobami. Skasowanie wolumenu
+czyni je **trwale nieodczytywalnymi**, niezależnie od tego, czy zawierają cokolwiek istotnego.
+Jeśli operator chce mieć w tej sprawie spokój, jedyna droga to odszyfrować je świadomie,
+jednorazowo, i zapisać wynik — albo jawnie zdecydować, że nie chce wiedzieć.
 
 ### 3.3 Tokeny i klucze API instancji
 
@@ -261,7 +334,9 @@ secrets_provider_connection   0
 z promptu systemowego (`chat-backend/server.mjs:23-25`) — model przez cztery dni pracy nie
 utworzył ani jednego poświadczenia.
 
-**Co się z nimi dzieje:** nic, bo ich nie ma. Zastrzeżenie w §5 pkt 6.
+**Co się z nimi dzieje:** nic, bo ich nie ma — ale patrz §3.2 i §3.8: *poświadczeń
+użytkownika* nie ma, natomiast w metadanych trzech wykonań siedzą trzy szyfrogramy pod
+kluczem `credentials`. Rozliczenie w §5 (wiersz 6) i §5.2 pkt 1.
 
 ### 3.5 Tagi, foldery, adnotacje
 
@@ -307,6 +382,35 @@ a Dagu Community nie ma na to odpowiedzi.
 | `execution_metadata`, `binary_data` | 0 — żadnych danych binarnych |
 | `workflow_statistics` | 8 wierszy, wszystkie `manual_success` |
 | `retryOf` / `retrySuccessId` | wszędzie `null` — żadne wykonanie nie było ponowieniem |
+| zaszyfrowane pole `credentials` | **3 z 12** (#1, #2, #7), każde 536 znaków — patrz niżej |
+
+**Zawartość `execution_data.data` jest w pełni odzyskiwalna.** Format to n8n-owa „spłaszczona"
+tablica wskaźników, nie zwykły JSON, ale rozwija się mechanicznie. Odzyskane wyniki końcowe
+zgadzają się co do grosza z tym, co liczą definicje — np. wykonanie #11 (`Premie 8% od pensji`)
+zwróciło `sumaPensji 34500, sumaPremii 2760, sumaPodatku 10406, sumaNaDoReke 27004`,
+a #4 (`Lista produktow`) `subtotal 785.99, vat 180.78, total 966.77`. Te liczby posłużyły
+w §4 za wzorzec do sprawdzenia mapowań.
+
+**Nic nigdy nie zostało usunięte z historii — to jest dowiedzione, nie domniemane.**
+Identyfikatory wykonań tworzą ciąg **1…12 bez luki**, a `sqlite_sequence.execution_entity`
+wynosi **12** przy **12** wierszach. Usunięcie któregokolwiek wiersza zostawiłoby lukę albo
+licznik wyższy od liczby wierszy. Retencja nigdy nie zadziałała.
+
+> **Trzy zaszyfrowane blob-y, o których nikt nie wiedział.** Wykonania **#1, #2 i #7** mają
+> w strukturze czasu wykonania klucz `credentials` wskazujący na szyfrogram crypto-js AES
+> (`U2FsdGVkX1…`), każdy dokładnie **536 znaków**. Pola obok są jawne i identyczne we
+> wszystkich trzech: `version: 1`, `source: "manual"`,
+> `redaction: {version: 2, production: false, manual: false}`, oraz `establishedAt`, które
+> co do milisekundy równa się `startedAt` danego wykonania (#1 `2026-09-14T12:14:50.006Z`,
+> #2 `12:16:53.535Z`, #7 `2026-09-15T06:03:50.413Z`).
+>
+> Co **wiem**: `credentials_entity` = 0, i **żaden z 15 workflow nie ma ani jednego węzła
+> z powiązaniem do poświadczenia** (sprawdzone po polu `credentials` we wszystkich węzłach).
+> To więc metadane silnika, nie poświadczenie użytkownika.
+>
+> Czego **nie wiem**: co jest w środku, i dlaczego tylko 3 wykonania z 12. Nie odszyfrowałem —
+> zlecenie zabrania drukowania zawartości pola `credentials`. Odczytać je może wyłącznie
+> klucz z §3.2.
 
 **Czy potrzebna po migracji: nie jako dane, tak jako dowód.** Historia wykonań Dagu nie jest
 i nie będzie kontynuacją tej historii — to inny silnik, inny format, inny licznik
@@ -335,13 +439,31 @@ dokumentu i z `workflow_history`, a historii edycji nie da się odtworzyć z nic
 | `webhook_entity`, `scheduled_job`, `scheduled_task`, `poller_state` | 0 | wyzwalacze | nie | **zero webhooków i zero harmonogramów** — spójne z „wszystko ręcznie" |
 | `workflow_published_version`, `workflow_publish_history`, `workflow_review_*` | 0 | mechanizm publikacji i recenzji n8n 2.x | nie | nigdy nieużywany |
 | `agents*`, `chat_hub_*`, `instance_ai_*`, `evaluation_*`, `data_table*` | 0 | funkcje n8n 2.x poza zakresem prototypu | nie | nigdy nieużywane |
-| `n8nEventLog*.log` | 4 pliki, ~87 KB | dziennik zdarzeń, **rotowany** — najstarszy zachowany wpis `2026-09-14T23:25:58+02:00` | nie | ginie z wolumenem; pierwszych 9 workflow i tak już w nim nie ma |
+| `n8nEventLog*.log` | **było** 4 pliki ~87 KB, **jest** 4 pliki ~9 KB | dziennik zdarzeń, **rotowany**; przy pierwszym przejściu najstarszy zachowany wpis miał `2026-09-14T23:25:58+02:00` | nie | **częściowo już przepadł** — patrz niżej |
+
+> **To się stało w trakcie.** Przy pierwszym przejściu (2026-09-18) `n8nEventLog-3.log` miał
+> **66 764 B**. Przy ponownym sprawdzeniu (2026-09-19, po wymianie silnika) ma **0 B** —
+> normalna rotacja przesunęła pliki o jedno miejsce i najstarszy wypadł. Zniknęło ok. 78 KB
+> zdarzeń, w tym całe okno, na którym opierało się potwierdzenie pochodzenia z §0.
+>
+> **Wnioski z §0 nie tracą podstawy** — stoją na `workflow_history.authors` i `meta`,
+> które siedzą w bazie i są nienaruszone; dziennik był tylko trzecim, pomocniczym źródłem.
+> Ale to jest konkretny, zmierzony przykład wiedzy, która zniknęła bez niczyjej decyzji,
+> w wolumenie oficjalnie „nietykalnym". Jeśli dziennik zdarzeń ma cokolwiek znaczyć jako
+> dowód, trzeba go skopiować poza wolumen **teraz**, a nie przy wyłączaniu n8n.
 | `crash.journal` | 0 B | pusty — czysty ostatni start | nie | — |
 | cały wolumen | **3,2 MB** (`database.sqlite` 2,0 MB + `-wal` 1,0 MB + logi 84 KB + `config` 4 KB) | — | — | **nietykalny do odwołania** (decyzja §11) |
 
 ---
 
 ## 4. Mapowanie na Dagu — cztery workflow DO-ODTWORZENIA
+
+> **SEKCJA NIEAKTUALNA — zastąpiona przez §8.** Napisana 2026-09-18 przed południem, przed
+> wersją 3 decyzji architektonicznej i przed uruchomieniem czegokolwiek na żywym Dagu.
+> §8.0 wylicza trzy rzeczy, które ta sekcja mówi **źle** (kanał `DAGU_OUTPUT_FILE`,
+> cytowanie apostrofami, identyfikatory kroków z myślnikiem). **Obowiązuje §8.**
+> Zostawiam tę sekcję jako zapis stanu wiedzy sprzed implementacji, bo pokazuje, co dało się
+> przewidzieć na sucho, a czego nie — i to jest osobna informacja.
 
 Podstawa: `docs/audyt-dagu.md` [D13], [D14], [D15], [D16], [D17] i decyzja §4.1.
 Kluczowe ustalenie, które rządzi całą tą sekcją: **dane między krokami idą tekstem**
@@ -373,15 +495,45 @@ nie kosmetyczna.
 typy: `string` i `json`, gdzie `json` znaczy wyłącznie „ten tekst musi się sparsować".
 Liczba przeżywa tylko **wewnątrz** dokumentu JSON, a nie jako zadeklarowany typ pola.
 
-**(d) Konwencja `RESULT=<JSON w jednej linii>` ma nieopisaną jeszcze kruchość.**
+**(d) Konwencja `RESULT=<JSON w jednej linii>` jest krucha — sprawdzone, nie przypuszczane.**
 Podstawienie `${steps.x.outputs.RESULT}` trafia do polecenia powłoki jako **tekst**, przed
-uruchomieniem. W dowodzie [D6] widać skutek uboczny tego mechanizmu w samym Dagu:
-`SUMMARY totals={netto:149.97,brutto:184.46}` — cudzysłowy zniknęły. Żeby konwencja z decyzji
-§4.1 działała, **każdy krok odbierający musi objąć podstawienie apostrofami**
-(`echo '${steps.x.outputs.RESULT}' | jq …`), a dokument JSON nie może zawierać apostrofu.
-To nie jest problem teoretyczny: pola tekstowe w tych workflow zawierają nazwy produktów
-i imiona. Rekomendacja: konwencja powinna wymuszać `@base64` albo `@json` przy emisji, a nie
-tylko „jedna linia". **Do rozstrzygnięcia przed implementacją.**
+uruchomieniem. Odtworzyłem ten mechanizm w obrazie Dagu (`sed` podstawia tekst → `bash -c`)
+i przepuściłem przez niego trzy warianty:
+
+```
+=== A. wariant z cudzyslowami:  echo '${...}' | jq -c .produkt
+  dokument bez apostrofu:   "Kabel HDMI 2.1"                       ← OK
+  dokument Z apostrofem:    bash: -c: line 1: unexpected EOF …     ← KROK PADA
+
+=== B. wariant bez cudzyslowow (tak wyglada przyklad z audytu [D6])
+  echo TOTALS=${...}   →   TOTALS=produkt:Kabel HDMI 2.1 TOTALS=cenaNetto:49.99
+                                                          ← DOKUMENT ZNISZCZONY, BEZ BLEDU
+
+=== C. emisja przez @base64, odbior przez base64 -d
+  "Mysz OConnor's Edition"                                ← OK, apostrof przechodzi
+```
+
+Dwa wnioski, oba twarde:
+
+* **Wariant B nie „gubi cudzysłowów", tylko niszczy dokument** — i robi to po cichu.
+  To bash **brace expansion**: `{"a":1,"b":2}` rozwija się w dwa słowa. Ponieważ *każdy*
+  dokument JSON zaczyna się od `{`, ten wariant psuje **zawsze**, a krok kończy się
+  `succeeded`. To dokładnie wyjaśnia artefakt `{netto:149.97,brutto:184.46}` z [D6].
+* **Wariant A pada twardo na apostrofie w danych.** Awaria jest głośna, więc mniej groźna —
+  ale pola tekstowe w tych workflow zawierają nazwy produktów i imiona, więc pierwsze
+  „O'Connor" w danych zatrzymuje proces.
+
+**Wniosek — i jak się zestarzał.** Wyciągnąłem stąd, że konwencja musi wymusić `@base64`
+przy emisji i `base64 -d` przy odbiorze (wariant C). **To już nieaktualne i słabsze niż to,
+co zrobiono naprawdę.** §8.0 rozstrzyga problem inaczej i lepiej: wartość jedzie **zmienną
+środowiskową**, czytaną jako `"$NAZWA"`, więc cytowanie przestaje być problemem autora kroku,
+a nie jest tylko przerzucone na inne kodowanie. Kanał z `DAGU_OUTPUT_FILE` jest dziś
+zakazany przez K5.
+
+Test powyżej zachowuję, bo **potwierdza diagnozę §8.0 niezależnie i liczbowo** — pokazuje,
+że wariant z apostrofami pada na pierwszym `O'Connor`, a wariant bez cudzysłowów niszczy
+dokument po cichu przez brace expansion. To jest argument **za** rozwiązaniem z §8.0,
+nie przeciw niemu.
 
 ---
 
@@ -450,11 +602,14 @@ steps:
    na każdy element strumienia; tutaj jest jeden dokument i jedno przejście. Przy jednej
    pozycji wynik jest identyczny, ale kod przestaje być odporny na wiele pozycji —
    to trzeba zapisać, a nie przemilczeć.
-3. **Zaokrąglanie do zweryfikowania.** `Math.round(x*100)/100` w JS i `(x*100|round/100)`
-   w `jq` to dwie różne implementacje na liczbach zmiennoprzecinkowych. Zgodność co do grosza
-   trzeba **sprawdzić**, nie założyć.
+3. ~~**Zaokrąglanie do zweryfikowania.**~~ **Sprawdzone — zgadza się co do grosza.**
+   `Math.round(x*100)/100` w JS i `(x*100|round/100)` w `jq` 1.7 dają ten sam wynik na
+   danych tego workflow. Wzorzec z wykonania #3: `netto 149.97, brutto 184.46`; wynik `jq`
+   w obrazie Dagu: `{"produkt":"Kabel HDMI 2.1","ilosc":3,"netto":149.97,"brutto":184.46}`.
 
-**Niewykonalne: nic** — pod warunkiem, że w obrazie Dagu jest `jq` (patrz §5 pkt 2).
+**Niewykonalne: nic.** `jq` 1.7 **jest** w obrazie (§8.9 pkt 7).
+*(Sprawdzenie liczbowe powyżej jest moje, z 2026-09-19, i było punktowe. Wiążące porównanie
+pole-po-polu, razem z typami int/float, jest w §8.4 — zrobione wcześniej i staranniej.)*
 
 ---
 
@@ -498,6 +653,11 @@ steps:
 
 **Co zmienia semantykę:** praktycznie nic poza typowaniem i kruchością cytowania z §4.0(d) —
 a ta akurat tu gryzie najmocniej, bo dokument zawiera trzy pola tekstowe z nazwami produktów.
+
+**Sprawdzone w obrazie Dagu na `jq` 1.7.** Wzorzec z wykonania #4 (`subtotal 785.99`,
+`vat 180.78`, `total 966.77`, linie `349.99 / 259 / 177`); wynik powyższego kroku:
+`{"subtotal":785.99,"vat":180.78,"total":966.77,"linie":[349.99,259,177]}` — **zgodność
+co do grosza**.
 
 **Niewykonalne: nic.** **Rekomendacja: to jest workflow, od którego należy zacząć migrację** —
 jeśli konwencja `RESULT` nie udźwignie tego przypadku, nie udźwignie żadnego.
@@ -565,46 +725,68 @@ Milczące wybranie jednego z nich byłoby dokładnie tym, czego ten dokument ma 
    dochodził do rozwiązania" ma przetrwać, katalog `dags/` musi iść pod git** — to osobna
    decyzja, której nie ma w `decyzja-architektoniczna.md`.
 
----
+**Sprawdzone w obrazie Dagu na `jq` 1.7 — cały łańcuch, wariant A (warunek w `jq`).**
+Wzorzec z wykonania #11 obok wyniku pięciu kolejnych kroków `jq`:
 
-## 5. Czego nie dało się ustalić
+```
+n8n  : stawki [0.12, 0.32, 0.32]   podatki [939.12, 3990.4, 5476.48]
+       sumaPensji 34500  sumaPremii 2760  sumaPodatku 10406  sumaNaDoReke 27004
+jq   : stawki [0.12, 0.32, 0.32]   podatki [939.12, 3990.4, 5476.48]
+       sumaPensji 34500  sumaPremii 2760  sumaPodatku 10406  sumaNaDoReke 27004
+```
 
-1. **Dlaczego powstało dokładnie pięć pustych „My workflow N" i cztery identyczne
-   „Prototyp iframe - test".** Pochodzenie jest ustalone (ręcznie, w UI — `authors='Admin Local'`,
-   `meta=null`), ale intencja nie. Dziennik zdarzeń jest rotowany i najstarszy zachowany wpis
-   ma znacznik `2026-09-14T23:25:58+02:00`, czyli **po** utworzeniu całej dziewiątki.
-   Klasyfikacji to nie zmienia; motywacji nie odtworzę.
-2. **Czy obraz Dagu zawiera `jq`.** Wszystkie cztery mapowania w §4 zakładają `jq` w kroku.
-   Audyt Dagu używał `awk` [D13] i pokazywał wynik `jq` w treści kroku [D6], ale **nie ma
-   w nim wprost potwierdzenia, jakie interpretery są w obrazie**
-   `ghcr.io/dagucloud/dagu@sha256:b242dc7b…` — w szczególności czy jest `node` albo `python3`,
-   którymi można by przenieść kod węzłów `code` dosłownie. Sam tego nie sprawdziłem, bo Dagu
-   należy w tej chwili do innego zadania. **To trzeba zweryfikować przed implementacją §4** —
-   jeśli `jq` nie ma, wszystkie cztery mapowania wymagają przepisania na `awk`, albo obraz
-   wymaga rozszerzenia.
-3. **Czy zawartość `execution_data.data` (wejścia i wyjścia poszczególnych węzłów) jest warta
-   zachowania.** Policzyłem rozmiary (1 160 – 5 884 B na wykonanie) i odczytałem z niej
-   `workflowData`, ale nie przeglądałem samych danych wynikowych. Jeśli dowodem ma być
-   *wynik*, a nie sama definicja, to osobna ekstrakcja — do decyzji operatora.
-4. **Czy `N8N_MCP_TOKEN` z `.env` to na pewno klucz `yRsJFnUDDaTaUKZy`.** Wszystko na to
-   wskazuje — jedyny klucz w bazie, `audience=mcp-server-api`, utworzony 108 s przed pierwszym
-   workflow z MCP, `lastUsedAt` z dzisiaj. Ale **nie porównałem wartości**, bo porównanie
-   wymagałoby wzięcia sekretu do ręki. Przed unieważnieniem klucza ktoś musi to potwierdzić
-   świadomie.
-5. **Który z 15 workflow widać na `docs/baseline-iframe-workflow.png`.** Zrzutu listy użyłem
-   (widać na nim `Total 15`), zrzutu pojedynczego procesu nie korelowałem z `id` — na zrzucie
-   nie ma identyfikatora, a adres ramki nie jest na nim czytelny.
-6. **Czy w tej instancji kiedykolwiek istniały poświadczenia, które potem skasowano.**
-   `credentials_entity` wynosi **0 teraz**. n8n nie prowadzi tabeli nagrobków, a okno dziennika
-   zdarzeń nie sięga początku instancji. Zdanie „poświadczeń nigdy nie było" jest
-   **nieudowadnialne**; udowodnione jest tylko „nie ma ich dziś". Dla klucza szyfrowania (§3.2)
-   różnicy to nie robi — nie ma czego odszyfrowywać.
-7. **Ile z 12 wykonań przeżyłoby retencję.** n8n ma `saveDataSuccessExecution: "all"`
-   i `executionTimeout: -1`, czyli nic nie jest przycinane. Nie sprawdziłem, czy w tym wolumenie
-   kiedykolwiek zadziałało czyszczenie — sekwencja `execution_entity` ma wartość 12, a wierszy
-   jest 12, więc **nic nie zostało usunięte**, ale to argument z licznika, nie z dziennika.
+**Zgodność pełna, łącznie z rozgałęzieniem progu podatkowego.**
+
+*(To było moje punktowe sprawdzenie łańcucha `jq` z 2026-09-19. Wiążący dowód jest
+wcześniejszy i mocniejszy: §8.4 porównuje **31 liści** pole po polu razem z typami,
+a wariant B — którego tu nie testowałem — ma własny dowód w §8.5. Zdanie „wariantu B nie
+przetestowałem", które stało w tym miejscu, było nieaktualne już w chwili pisania.)*
 
 ---
+
+## 5. Co udało się ustalić w drugim podejściu, a co nadal nie
+
+Pierwsza wersja tego dokumentu zostawiła siedem pozycji otwartych. **Wszystkie siedem jest
+dziś zamkniętych** — ale nie wszystkie przeze mnie: pozycję 2 zamknęła wcześniej ekipa
+piszącą §8, i tak jest w tabeli odnotowane. Zostawiam pytania wypisane razem z odpowiedziami,
+bo lista otwartych pytań bez odpowiedzi jest warta tyle, co żadna.
+
+| # | pytanie z pierwszej wersji | status | odpowiedź |
+|---|---|---|---|
+| 1 | Dlaczego 5 pustych „My workflow N" i 4 identyczne „Prototyp iframe - test"? | **rozstrzygnięte** | Wszystkie mają węzły w domyślnym rozstawieniu szablonu i identyczne `settings`; cztery kopie są bajt w bajt identyczne po normalizacji UUID. To powtarzane przechodzenie ścieżki „utwórz → zapisz", nie projektowanie procesów. Szczegóły i dowód w §1.2. |
+| 2 | Czy obraz Dagu zawiera `jq`? | **rozstrzygnięte wcześniej, nie przeze mnie** | Zamknięte w **§8.9 pkt 7** przy przepisywaniu procesów: `jq` jest, `node` i `python3` nie ma, cała logika węzłów `code` została przepisana na `jq`. Moje sprawdzenie z 2026-09-19 to potwierdziło i dorzuciło szczegół: obraz to **Ubuntu 24.04**, jest też `perl` 5, `bash` 5.2, `curl`, `openssl`, `base64`, `dash`, a `awk` to **`mawk`, nie `gawk`** — czyli rozszerzenia GNU (np. `gensub`) nie są dostępne. |
+| 3 | Czy `execution_data.data` jest warte zachowania? | **rozstrzygnięte** | Jest w pełni odzyskiwalne i zawiera komplet wejść i wyjść każdego węzła. Wydobyłem wyniki wszystkich istotnych wykonań i użyłem ich jako wzorca do sprawdzenia mapowań z §4. Szczegóły w §3.8. |
+| 4 | Czy `.env` `N8N_MCP_TOKEN` to klucz `yRsJFnUDDaTaUKZy`? | **rozstrzygnięte** | **Tak.** Porównanie `sha256` wartości z `.env` i z `user_api_keys.apiKey` — **zgodne**, obie 272 znaki. Porównałem hasze, nie wartości; sekret nie został nigdzie wypisany. |
+| 5 | Który workflow widać na `baseline-iframe-workflow.png`? | **rozstrzygnięte** | `gnzjOf2qHJoEPeGo` „Status OK" — na zrzucie widać tytuł „Status OK" i węzły `Start` → `Set Status`, czyli fixture R02/R03. Nie `FNgC8R2d33pddvSa` („Prosty status OK"). |
+| 6 | Czy kiedykolwiek istniały poświadczenia, które potem skasowano? | **rozstrzygnięte, inaczej niż zakładałem** | Skan surowych bajtów: **zero** śladów po skasowanych wierszach na trzech wolnych stronach, zero typów poświadczeń (`httpBasicAuth`, `oAuth2Api`, …). Ale znalazłem **trzy szyfrogramy** pod kluczem `credentials` w metadanych wykonań #1, #2, #7. To metadane silnika, nie poświadczenia użytkownika (żaden węzeł nie ma powiązania), ale **czyta je tylko klucz szyfrowania** — co unieważnia moje wcześniejsze „klucz nie chroni niczego". Korekta w §3.2, szczegóły w §3.8. |
+| 7 | Czy retencja kiedykolwiek przycięła wykonania? | **rozstrzygnięte** | **Nie, i to jest dowiedzione.** Identyfikatory 1…12 bez luki, `sqlite_sequence` = 12 przy 12 wierszach. Usunięcie czegokolwiek zostawiłoby ślad w jednym albo drugim. |
+
+### 5.1 Co z tego wynika — niewiele, bo §8 już to zrobiła
+
+Kiedy pisałem pierwszą wersję, brak `node`/`python3` byłby ustaleniem blokującym: wszystkie
+cztery węzły `code` są w JavaScripcie i nie dałoby się ich przenieść dosłownie. Dziś to
+pytanie jest już zamknięte i **wykonane** — §8 przepisała całą logikę na `jq` i sprawdziła
+wynik pole po polu (§8.4). Moje ustalenie nie zmienia więc żadnej decyzji; potwierdza ją.
+
+Jedyny szczegół, który chyba nigdzie nie padł, a może kiedyś ugryźć: **`awk` w obrazie to
+`mawk`**. Przykład [D13] z audytu używa `awk` z `printf` i zadziała, ale gdyby ktoś sięgnął
+po `gensub`, `asort` albo `strtonum`, dostanie błąd składni, nie brak wyniku.
+
+### 5.2 Czego nadal nie wiem
+
+1. **Co jest w trzech szyfrogramach `credentials`** (§3.2, §3.8) i dlaczego są tylko w 3 z 12
+   wykonań. Nie odszyfrowałem ich, bo zlecenie zabrania drukowania zawartości pola
+   `credentials`. To nie jest to samo co pominięty `resumeToken` z §7.7 — tamten jest jawnym
+   64-znakowym tokenem w każdym z 12 wierszy, ten jest szyfrogramem AES w trzech.
+   Rozstrzygnięcie wymaga świadomej decyzji operatora, nie kolejnego przejścia analityka.
+2. **Czy `N8N_MCP_TOKEN` da się jeszcze unieważnić.** Jest nadal w `.env` (potwierdzone
+   2026-09-19), ale usługa `n8n` już nie wstaje. Żeby klucz cofnąć, trzeba **najpierw
+   z powrotem podnieść n8n**. Nie zrobiłem tego sam, bo to zmiana stanu, nie inwentaryzacja —
+   ale im dłużej to leży, tym większa szansa, że nie zrobi tego nikt.
+3. **Czy w dzienniku zdarzeń, który przepadł w rotacji** (§3.9, ok. 78 KB) było cokolwiek,
+   czego nie ma w bazie. Z definicji nie da się tego już sprawdzić. Wnioski §0 stoją na
+   `workflow_history.authors`, więc nie są zagrożone — ale to jedyne pytanie z tej listy,
+   które jest zamknięte **nieodwracalnie i nie na moją korzyść**.
 
 ## 6. Zmiany stanu wprowadzone przez tę inwentaryzację
 
@@ -624,11 +806,26 @@ Dla uczciwości, w konwencji załącznika do `baseline-prototypu.md`:
    Liczniki na koniec pracy: **15 workflow, 12 wykonań** — bez zmian wobec §0.
 5. **Utworzony wyłącznie ten plik.** Żaden inny plik w repozytorium nie został zmieniony.
 
+### 6.1 Drugie przejście (2026-09-19)
+
+1. **Zero dostępu do n8n** — kontener nie istnieje. Cały odczyt z kopii bazy wyciągniętej
+   przez `docker run --rm -v n8niframe_n8n_data:/data:ro`, otwartej `mode=ro`.
+2. **Cztery kontenery jednorazowe** `docker run --rm --network none` z obrazu
+   `ghcr.io/dagucloud/dagu@sha256:b242dc7b…` — wyłącznie po to, żeby sprawdzić, jakie
+   narzędzia są w obrazie i przepuścić przez `jq` wyrażenia z §4. Bez wolumenów, bez sieci,
+   bez portów, bez nazw. **Stack `n8niframe-dagu` ani `dags/` nie były dotykane.**
+3. **Odczyt dwóch zrzutów** z `docs/` (`baseline-iframe-lista.png`, `-workflow.png`).
+4. **Porównanie hasza** tokenu z `.env` z haszem klucza w bazie. Wartości nie wypisano.
+5. **Nie odszyfrowano** trzech blobów `credentials` z §3.8 — świadomie, zgodnie z zakazem.
+6. Liczniki na koniec: **15 workflow, 12 wykonań, `integrity_check: ok`** — bez zmian.
+   Zmieniony wyłącznie ten plik.
+
 > **Uwaga metodyczna.** Przy próbie odczytania samych *nazw pól* z pliku `/home/node/.n8n/config`
 > polecenie parsujące padło i wypisało w moim terminalu roboczym linię pliku razem z wartością
 > klucza szyfrowania. Wartość **nie jest reprodukowana w tym dokumencie**, plik nie został
-> zmieniony, a klucz i tak nie chroni niczego (§3.2). Odnotowuję, bo rozliczenie, które ukrywa
-> własne potknięcia, jest warte mniej niż to, które ich nie ukrywa.
+> zmieniony. Odnotowuję, bo rozliczenie, które ukrywa własne potknięcia, jest warte mniej
+> niż to, które ich nie ukrywa. (W pierwszej wersji dopisałem tu „a klucz i tak nie chroni
+> niczego" — to okazało się nieprawdą, patrz §3.2.)
 
 ---
 
@@ -964,6 +1161,10 @@ pominięcie odnotowane w `MANIFEST.json` pod `polaPominiete`.
 7. **Sprawdzenia, czy `N8N_MCP_TOKEN` z `.env` to klucz `yRsJFnUDDaTaUKZy`** — §5 pkt 4
    nadal otwarty. Nie porównywałem wartości, bo to wymagałoby wzięcia sekretu do ręki,
    a fixture i tak nie mogą go zawierać.
+   > **Dopisek z 2026-09-19 (autor §0–§6):** to już zamknięte i **potwierdzone: tak, to ten
+   > klucz.** Dało się bez brania sekretu do ręki — porównaniem `sha256` wartości z `.env`
+   > i z `user_api_keys.apiKey`; obie 272 znaki, hasze zgodne, żadna wartość nigdzie nie
+   > padła. Aktualny stan w tabeli §5, wiersz 4.
 8. **Czegokolwiek z `credentials_entity`** — tabela ma 0 wierszy (potwierdzone na migawce,
    §7.2). Nie ma czego wyciągać, a nie „nie udało się".
 
