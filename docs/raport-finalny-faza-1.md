@@ -44,14 +44,16 @@ Pięć kontenerów `Up`, port publikuje wyłącznie proxy (odbiór R18). Sieci: 
 | Zestaw | Liczba | Źródło |
 | --- | --- | --- |
 | Kontrakt na poziomie silnika | 40 | `tests/kontrakt/` |
-| Warstwa polityki | 143 | `chat-backend/test/polityka/` — raport T2 §2 (rozkład per plik tamże) |
+| Warstwa polityki | 143 zadeklarowane; **136 wykonanych zielonych** (2026-09-20) | `chat-backend/test/polityka/` — raport T2 §2; różnica 7 = **testy warunkowo pominięte** w dwóch suite'ach (`procesy-repozytorium` wymaga katalogu `dags/`, `integracja-dagu` — `DAGU_POLITYKA_URL/KLUCZ`); pominięcie, nie porażka |
 | Brama sesji | 17 | `chat-backend/test/sesja/brama.test.mjs` — raport T1 §6 |
 | Poświadczenia (po naprawie GLM) | 9/9 | `chat-backend/test/credentials.test.mjs` — odbiór §5.1 |
 | E2E na żywej aplikacji | 43/43 sprawdzeń (5 scenariuszy) | raport T3 §4 |
 | Odbiór regresji | 18 scenariuszy: **17 zaliczonych**, 1 niezweryfikowane | `odbior-faza-1.md` §5 |
 | Porównanie z fixture | 5 procesów + kroki pośrednie: **wszystkie zgodne** | `rejestr-workflow.md` §8.3 |
 
-**Razem 209 automatycznych testów + 43 sprawdzenia E2E + 18 scenariuszy odbioru.**
+**Razem: 209 automatycznych testów zadeklarowanych, z czego 202 wykonanych i zielonych
+w pełnym przebiegu 2026-09-20** (raport t5 §5; 7 warunkowo pominięte — patrz wiersz
+polityki wyżej) **+ 43 sprawdzenia E2E + 18 scenariuszy odbioru.**
 Pełna macierz wymaganie → zadanie → dowód: `docs/macierz-wymagania-testy.md`.
 
 ## 3. Wynik odbioru — 18 scenariuszy (2026-09-20)

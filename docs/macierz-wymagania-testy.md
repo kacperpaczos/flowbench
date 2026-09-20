@@ -120,6 +120,8 @@ ma dowód i zrzut; tu tylko mapa na zadania:
 | Scenariusze odbioru regresji | 18 (17 zaliczonych) | `odbior-faza-1.md` §5 |
 | Porównanie z fixture | 5 procesów + kroki pośrednie, wszystkie zgodne | rejestr §8.3 |
 
-**Razem: 209 automatycznych testów + 43 sprawdzenia E2E + 18 scenariuszy odbioru + porównanie
+**Razem: 209 automatycznych testów zadeklarowanych / 202 wykonanych zielonych 2026-09-20**
+(7 warunkowo pominięte: 2 suite'y polityki zależne od środowiska — raport t5 §5)
+**+ 43 sprawdzenia E2E + 18 scenariuszy odbioru + porównanie
 fixture.** Pozycje `częściowo`/`niezweryfikowane` powyżej są jednocześnie listą jawnych
 pozostałości — rozliczenie ich w kontekście Dużych Produktów: `docs/handoff-faza-2.md`.
