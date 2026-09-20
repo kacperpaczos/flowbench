@@ -45,7 +45,7 @@ export function App() {
   return (
     <div className="app">
       <Sidebar active={section} onSelect={setSection} onWyloguj={sesja.wyloguj} />
-      <EditorPanel cel={cel} kontekst={kontekst} nazwa={nazwa} onKontekst={setKontekst} />
+      <EditorPanel cel={cel} nazwa={nazwa} onKontekst={setKontekst} />
       <ChatPanel kontekst={kontekst} onProces={otworzZCzatu} />
     </div>
   )

@@ -47,12 +47,10 @@ const adresCelu = (cel: CelRamki) => {
 
 export function EditorPanel({
   cel,
-  kontekst,
   nazwa,
   onKontekst,
 }: {
   cel: CelRamki
-  kontekst: KontekstRamki
   nazwa: NazwaProcesu
   onKontekst: (kontekst: KontekstRamki) => void
 }) {
@@ -110,45 +108,26 @@ export function EditorPanel({
       ? `Silnik odpowiedział na adres ramki kodem ${sonda.status}. Ramka nie pokaże procesu.`
       : null
 
-  const identyfikator = kontekst.dagName
-  const tytul = nazwa.nazwaWyswietlana ?? (identyfikator ? '—' : 'Procesy')
-
+  // Pasek nad ramka zniesiony (decyzja operatora 2026-09-20): tytul i identyfikatory
+  // pokazuje wlasne UI silnika, a status wczytania nie mial wartosci dla operatora
+  // (par. 13.5 E4). Jedyna funkcja, ktora musi przetrwac, to reczne przeladowanie
+  // ramki po bledzie - dlatego przycisk zyl w pasku ostrzezenia, zamiast stalego naglowka.
   return (
     <main className="editor">
-      <header className="editor-bar">
-        <div className="editor-title">
-          <h1 title={nazwa.nazwaWyswietlana ?? undefined}>{tytul}</h1>
-          {/* par. 4.2: nazwa polska dla czlowieka, identyfikator techniczny obok niej. */}
-          {identyfikator && <span className="badge is-id" title="Identyfikator techniczny procesu">{identyfikator}</span>}
-          {kontekst.rodzaj === 'wykonanie' && kontekst.dagRunId && (
-            <span className="badge is-alt" title="Identyfikator wykonania">wykonanie · {kontekst.dagRunId}</span>
-          )}
-          {kontekst.rodzaj === 'lista' && <span className="badge">lista procesów</span>}
-        </div>
-        <div className="editor-actions">
-          <span
-            className={'status' + (loading ? ' is-loading' : bladRamki ? ' is-blad' : '')}
-            title="Zdarzenie load ramki nie jest dowodem gotowości UI silnika ani zalogowania (par. 13.5 E4)."
-          >
-            {loading
-              ? 'Wczytywanie ramki…'
-              : bladRamki
-                ? `Adres ramki odpowiada kodem ${sonda.status ?? '—'}`
-                : 'Ramka wczytana (to nie jest dowód gotowości)'}
-          </span>
-          <button type="button" className="ghost-btn" onClick={reload}>
-            Przeładuj
-          </button>
-        </div>
-      </header>
-
       {nazwa.stan === 'nie-znaleziono' && (
         <p className="pasek-ostrzezenia">{nazwa.komunikat}</p>
       )}
       {nazwa.stan === 'blad' && (
         <p className="pasek-ostrzezenia">Nie udało się odczytać nazwy procesu: {nazwa.komunikat}</p>
       )}
-      {bladRamki && <p className="pasek-ostrzezenia">{bladRamki} Użyj „Przeładuj”.</p>}
+      {bladRamki && (
+        <p className="pasek-ostrzezenia">
+          {bladRamki}{' '}
+          <button type="button" className="ghost-btn" onClick={reload}>
+            Przeładuj
+          </button>
+        </p>
+      )}
 
       <div className="editor-frame">
         {loading && (
