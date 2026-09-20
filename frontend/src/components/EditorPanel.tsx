@@ -73,6 +73,12 @@ export function EditorPanel({
   useEffect(() => {
     setLoading(true)
     setSonda({ status: null, blad: null })
+    // Sonda dziala tylko w tym samym originie (Dagu za proxy). Cel spoza originu
+    // (ByteChef na 8081, galaz proba-bytechef) jest nieprzejrzysty z definicji -
+    // fetch dalby falszywy alarm "Failed to fetch", wiec go nie wykonujemy.
+    if (new URL(src, window.location.href).origin !== window.location.origin) {
+      return
+    }
     let aktualne = true
     zadanie(src, { method: 'GET' })
       .then((res) => { if (aktualne) setSonda({ status: res.status, blad: null }) })

@@ -89,8 +89,10 @@ configs:
       header_up Authorization "Bearer ${DAGU_PROXY_TOKEN:?ustaw DAGU_PROXY_TOKEN w .env}"
 
 services:
-  # --- SILNIK PROCESOW ---------------------------------------------------------
+  # --- SILNIK PROCESOW (Faza 1, za profilem "dagu" - gałąź proba-bytechef
+  #     przenosi silnik na ByteChef; powrót: --profile dagu) ----------------------
   dagu:
+    profiles: ["dagu"]
     # Przypiecie po digescie, nie po tagu (decyzja par. 3). Rownowazny tag: 2.16.6.
     image: ghcr.io/dagucloud/dagu@sha256:b242dc7b605aa20d6db78ba192beb82135d390025a7d9c8dfd7f08e14464c69f
     container_name: n8niframe-dagu
@@ -196,7 +198,7 @@ services:
       - wewnetrzna                   # proxy i silnik
       - wyjsciowa                    # API modelu - jedyna usluga z wyjsciem na swiat
     depends_on:
-      - dagu
+      - bytechef
       - poswiadczenia
 
   # --- POSWIADCZENIA: swiadomie glupi posrednik --------------------------------
@@ -273,6 +275,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8080:80"          # tylko lokalnie, bez wystawiania na swiat
+      - "127.0.0.1:8081:81"          # ByteChef (proba-bytechef): ten sam Caddy,
+                                     # osobny port wejsciowy, bo ByteChef nie
+                                     # wspiera podsciezki (assets na twardo /)
     configs:
       - source: caddy_token_dagu
         target: /etc/caddy/dagu-token.conf
@@ -294,7 +299,7 @@ services:
       - wyjsciowa
       - wycofanie                    # trasa /n8n/* po wlaczeniu profilu `n8n`
     depends_on:
-      - dagu
+      - bytechef
       - frontend
       - chat-backend
 
@@ -351,6 +356,47 @@ services:
     networks:
       - wycofanie                    # osobna siec: krok DAG-a nie widzi tej nazwy
 
+  # --- SILNIK PROCESOW (proba-bytechef) ---------------------------------------
+  # ByteChef: jeden kontener (server + worker + UI, Spring Boot/Tomcat) + Postgres.
+  # Obraz upstream; przypiecie po tagu - digest dodac po pierwszym odbiorze.
+  # Nasza zmiana wzgledem przykladu upstream: BEZ publikacji portu na host
+  # (wchodzi przez Caddy na 127.0.0.1:8081), siec wewnetrzna, klucz remember-me
+  # z .env a nie hardcoded (upstream trzyma w compose przyklad na stale).
+  bytechef:
+    image: docker.bytechef.io/bytechef/bytechef:latest
+    container_name: n8niframe-bytechef
+    restart: unless-stopped
+    depends_on:
+      - bytechef-postgres
+    environment:
+      BYTECHEF_DATASOURCE_URL: jdbc:postgresql://bytechef-postgres:5432/bytechef
+      BYTECHEF_DATASOURCE_USERNAME: bytechef
+      BYTECHEF_DATASOURCE_PASSWORD: ${BYTECHEF_DB_HASLO:?ustaw BYTECHEF_DB_HASLO w .env}
+      BYTECHEF_SECURITY_REMEMBER_ME_KEY: ${BYTECHEF_REMEMBER_ME_KLUCZ:?ustaw BYTECHEF_REMEMBER_ME_KLUCZ w .env}
+    volumes:
+      - bytechef_home:/root/.bytechef   # wygenerowane klucze szyfrowania - musza
+                                        # przetrwac recreate, inaczej dane w DB
+                                        # staja sie nieodczytywalne
+    expose:
+      - "8080"
+    networks:
+      - wewnetrzna
+
+  bytechef-postgres:
+    image: postgres:16-alpine
+    container_name: n8niframe-bytechef-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: bytechef
+      POSTGRES_PASSWORD: ${BYTECHEF_DB_HASLO:?ustaw BYTECHEF_DB_HASLO w .env}
+      POSTGRES_DB: bytechef
+    volumes:
+      - bytechef_db:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    networks:
+      - wewnetrzna
+
 volumes:
   n8n_data:          # NIETYKALNY - pelna nazwa n8niframe_n8n_data
   dagu_data:         # cale /var/lib/dagu: definicje, historia, logi, klucze API
@@ -359,3 +405,5 @@ volumes:
   poswiadczenia:     # jeden plik: kopia .credentials.json z hosta
   caddy_data:
   caddy_config:
+  bytechef_db:       # baza ByteChef (proba-bytechef)
+  bytechef_home:     # klucze z /root/.bytechef - bez nich DB jest nieodczytywalny

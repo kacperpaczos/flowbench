@@ -20,11 +20,13 @@ import { useSesja } from './sesja'
  */
 // Pozycje menu to realne widoki silnika; klikniecie nawiguje ramke (decyzja
 // operatora 2026-09-20 - menu przestaje byc atrapa).
+// Na probie-bytechef caly silnik jest jednym SPA - widoki sa wewnatrz niego,
+// wiec kazda pozycja menu prowadzi do korzenia ByteChef.
 const ADRESY_WIDOKOW: Record<string, string> = {
-  produkty: '/dagu/',
-  procesy: '/dagu/dags',
-  historia: '/dagu/dag-runs',
-  ustawienia: '/dagu/admin',
+  produkty: 'http://127.0.0.1:8081',
+  procesy: 'http://127.0.0.1:8081',
+  historia: 'http://127.0.0.1:8081',
+  ustawienia: 'http://127.0.0.1:8081',
 }
 
 export function App() {

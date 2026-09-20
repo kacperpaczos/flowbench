@@ -9,8 +9,13 @@
  * pliku, zeby te dwie strony nie mogly sie rozjechac.
  */
 
+// Galaz proba-bytechef: silnikiem jest ByteChef (Spring Boot + React na
+// 127.0.0.1:8081 przez Caddy - patrz komentarz w Caddyfile i docker-compose.yml).
+// Adresy deep-linkow Dagu zostaja w kodzie (martwe na tej galezi) - wracaja
+// razem z profilem "dagu".
+export const SILNIK_BYTECHEF = 'http://127.0.0.1:8081'
 export const PREFIKS = '/dagu'
-export const ADRES_LISTY = `${PREFIKS}/dags`
+export const ADRES_LISTY = SILNIK_BYTECHEF
 
 export type RodzajKontekstu = 'lista' | 'proces' | 'wykonanie' | 'inne'
 

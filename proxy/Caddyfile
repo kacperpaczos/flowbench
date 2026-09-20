@@ -122,3 +122,31 @@
 		reverse_proxy frontend:80
 	}
 }
+
+# ===========================================================================
+# PROBA-BYTCHEF (galeź proba-bytechef): silnik ByteChef na wlasmym porcie
+# ===========================================================================
+#
+# Dlaczego osobny port, a nie podsciezka /bytechef/*: zmierzone na obrazie
+# upstream (2026-09-20) - klient React buduje sciezki assetow na twardo od
+# korzenia ("/assets/main-*.js"), wiec reverse-proxy z obcinaniem prefiksu
+# rozbija ladowanie strony, a SERVER_SERVLET_CONTEXT_PATH prefiksuje tylko
+# trasy kontrolera, nie assety. Port nie dzieli "site" dla ciasteczek na
+# localhost, wiec sesja ByteChef w ramce z 127.0.0.1:8080 dziala.
+#
+# Bezpieczenstwo: ByteChef wysyla X-Frame-Options: DENY (Spring Security) -
+# zdejmiemy go i podstawiamy CSP frame-ancestors wskazujace WYLACZNIE na
+# nasz origin aplikacji (ten sam mechanizm co przy Dagu, par. wyzej).
+# Port publikowany wylacznie na 127.0.0.1.
+
+http://127.0.0.1:81 {
+	log {
+		output stdout
+		format console
+	}
+
+	reverse_proxy bytechef:8080 {
+		header_down -X-Frame-Options
+		header_down Content-Security-Policy "frame-ancestors 'self' http://127.0.0.1:8080 http://localhost:8080"
+	}
+}
