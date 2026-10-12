@@ -19,8 +19,8 @@ conversation instead of drag-and-drop.
 
 | Branch | Engine | Role | Alignment with the n8n bar |
 | --- | --- | --- | --- |
-| [`n8n`](https://github.com/kacperpaczos/n8niframe/tree/n8n) | **n8n** 2.38.7 | The **reference implementation**. Every candidate is measured against this behavior. | 100% by definition — it *is* the bar. |
-| [`dagu`](https://github.com/kacperpaczos/n8niframe/tree/dagu) | **Dagu** 2.16.6 (pinned by digest) | Chat wrapper around Dagu: contract-enforcing policy layer, YAML DAGs the bot writes into `dags/`. | **High.** 18/18 regression scenarios, data parity on real fixtures, end-to-end bot demo (GLM). |
+| [`n8n`](https://github.com/kacperpaczos/flowbench/tree/n8n) | **n8n** 2.38.7 | The **reference implementation**. Every candidate is measured against this behavior. | 100% by definition — it *is* the bar. |
+| [`dagu`](https://github.com/kacperpaczos/flowbench/tree/dagu) | **Dagu** 2.16.6 (pinned by digest) | Chat wrapper around Dagu: contract-enforcing policy layer, YAML DAGs the bot writes into `dags/`. | **High.** 18/18 regression scenarios, data parity on real fixtures, end-to-end bot demo (GLM). |
 | `bytechef` *(this branch)* | **ByteChef** (upstream) + Postgres 16 | Chat wrapper around ByteChef. | **Partial.** Engine embedded with 3 demo workflows; bot adapter (their Management MCP) pending. |
 
 ## Roadmap — one engine per branch
