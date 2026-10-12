@@ -625,7 +625,7 @@ Lista jawna, żeby nikt nie wyczytał z odbioru więcej, niż w nim jest.
    regresji.
 5. **Rozliczenia istniejącej wiedzy (P4–P6).** Cztery wersje procesu Premie, 15 obiektów
    rozliczonych i fizycznie zachowanych, historia pracy agenta w Gicie.
-6. **Wycofania (E7, §11).** Procedura `git switch main` + profil `n8n` musi być
+6. **Wycofania (E7, §11).** Procedura `git switch n8n` + profil `n8n` musi być
    **sprawdzona na kopii** — procedura nieprzećwiczona nie jest procedurą.
 7. **Scenariuszy E5 i E6 z §13.5.** Restart w trakcie pracy, ręczny retry, timeout,
    anulowanie, błąd modelu, brak procesu, wylogowanie. Baseline ich nie miał, więc

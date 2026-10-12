@@ -671,7 +671,7 @@ repozytorium Git.** Wersja 2 obiecywała wycofanie „z oznaczonego commitu", kt
 | --- | --- |
 | Gałąź bazowa | `main` |
 | Punkt wycofania | commit `931e6b3`, tag **`stan-zastany-n8n`** — działający prototyp na n8n 2.38.7, przed jakąkolwiek zmianą silnika |
-| Gałąź pracy Fazy 1 | `faza-1-dagu` |
+| Gałąź pracy Fazy 1 | `faza-1-dagu` (przemianowana na `dagu` 2026-10-12) |
 | Poza repozytorium świadomie | `.env` (token MCP), poświadczenia Claude Code, migawki bazy SQLite n8n, katalogi robocze silników |
 | W repozytorium świadomie | `dags/` ze skryptami i kontraktami — bo `dagu_change upsert_dag` nadpisuje cały plik i bez Gita historia pracy agenta nie ma gdzie mieszkać (rejestr §4.4 pkt 5) |
 
@@ -684,7 +684,7 @@ tego później jako niespodzianki.
 
 * Usługa `n8n` zostaje w `docker-compose.yml` za profilem Compose, domyślnie nie wstaje.
 * Wolumen `n8niframe_n8n_data` zostaje nietknięty, z 15 procesami i 12 wykonaniami.
-* Wycofanie: `git switch main` (albo `git checkout stan-zastany-n8n`), przebudowanie obrazów,
+* Wycofanie: `git switch n8n` (albo `git checkout stan-zastany-n8n`), przebudowanie obrazów,
   uruchomienie profilu `n8n`. Żadnego ręcznego odtwarzania plików.
 * Skrypt wycofania i procedura krok po kroku są produktem implementacji (T1), nie tego
   dokumentu, i **muszą być sprawdzone na kopii** — procedura nieprzećwiczona nie jest procedurą.
@@ -763,5 +763,5 @@ nie intencję. `R01`–`R18` to scenariusze regresji z `docs/baseline-prototypu.
 | E4 | `onLoad` ramki nie jest dowodem gotowości | T3, T5 | Dowodem jest odczytany element UI Dagu, nie zdarzenie ładowania. |
 | E5 | Restart w trakcie pracy i ręczny retry | T5 | Kroki `completed` nie dublują skutków; krok `failed` ma opisaną idempotencję. Bez watchdoga. |
 | E6 | Timeout, anulowanie, błąd modelu, brak procesu, wylogowanie | T5 | Każdy przypadek daje operatorowi widoczny, zrozumiały komunikat. |
-| E7 | Przełączenie i wycofanie na kopii | T5 | `git switch main` + profil `n8n` przywraca działanie; dane obu silników nienaruszone. |
+| E7 | Przełączenie i wycofanie na kopii | T5 | `git switch n8n` + profil `n8n` przywraca działanie; dane obu silników nienaruszone. |
 | E8 | Sukces czytany z silnika po `dagRunId` | T2, T3 | Test: model pisze „gotowe" przy czerwonym przebiegu → aplikacja pokazuje błąd. |

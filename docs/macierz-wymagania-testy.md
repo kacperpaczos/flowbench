@@ -90,7 +90,7 @@ wypisanym) · `niezweryfikowane` (bez pomiaru) · `poza zakresem` (decyzja świa
 | E4 | `onLoad` nie jest dowodem gotowości | T3, T5 | Napis „Edytor gotowy" usunięty; dowód = odczytany element UI / kod HTTP (T3 §2.6) | potwierdzone |
 | E5 | Restart w trakcie pracy i ręczny retry | T5 | Restart `dagu` → 1 s, 6/6 DAG-ów i historia z wolumenu (odbiór R09); recreate zachowuje dane (T1 §9); odporność klienta MCP na restart (T3 §5.7). Idempotencja retry kroku `failed` — osobnego scenariusza brak w raportach | częściowo |
 | E6 | Timeout, błąd modelu, brak procesu, wylogowanie, błąd ramki | T3, T5 | Limit 420 s (zmierzony), brak procesu, wylogowanie, 502 ramki (T3 §5.4–5.6); R08 (błędne żądania). Anulowanie tury — funkcji nadal nie ma (nie regresja, T3 §7.4) | częściowo |
-| E7 | Przełączenie i wycofanie na kopii | T5 | Odzyskanie danych n8n z backupu **przećwiczone na kopii** (15 procesów, sha256 OK — T1 §1, `wycofanie.md` §4). Pełne przełączenie `git switch main` + profil `n8n` na żywym układzie nie było częścią odbioru §5 | częściowo |
+| E7 | Przełączenie i wycofanie na kopii | T5 | Odzyskanie danych n8n z backupu **przećwiczone na kopii** (15 procesów, sha256 OK — T1 §1, `wycofanie.md` §4). Pełne przełączenie `git switch n8n` + profil `n8n` na żywym układzie nie było częścią odbioru §5 | częściowo |
 | E8 | Sukces czytany z silnika po `dagRunId` | T2, T3 | Model pisze „gotowe" przy czerwonym przebiegu → aplikacja pokazuje błąd (T2 §7, T3 §4 E8, odbiór R03) | potwierdzone |
 
 ## 7. Regresja baseline R01–R18

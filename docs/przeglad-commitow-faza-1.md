@@ -85,7 +85,7 @@ wycofania z `docs/wycofanie.md`:
 * **Poziom A** (~1 min, bez Gita): `docker compose --profile n8n up -d` — stary silnik
   obok nowego.
 * **Poziom B** (~5 min): `docker compose --profile n8n stop` (bez `-v`!),
-  `git switch main` albo `git checkout stan-zastany-n8n` (commit `931e6b3`),
+  `git switch n8n` albo `git checkout stan-zastany-n8n` (commit `931e6b3`),
   przywrócić `.env` sprzed Fazy 1 (tylko `N8N_MCP_TOKEN`), `docker compose up -d --build`.
   Wolumen `n8niframe_n8n_data` Faza 1 nietknięta, więc dane wracają bez odtwarzania.
 

@@ -8,20 +8,38 @@ The product idea stays constant while the engine underneath changes:
   reads back workflows through the engine's MCP/API,
 * and the iframe jumps to whatever the bot just created or ran.
 
-**n8n stays.** It is the original engine this prototype started with, and it remains on `main` as
-the baseline and rollback reference — this project is not about throwing it away, it is about
-wrapping it (and its alternatives) so that building a workflow is a conversation instead of
-drag-and-drop.
+**n8n stays.** It is the engine this prototype started with and it remains the **reference
+implementation** — the bar every alternative is measured against. The project is not about throwing
+it away; it is about wrapping it (and its alternatives) so that building a workflow is a
+conversation instead of drag-and-drop.
 
 ![Prototype layout](docs/uklad.png)
 
-## Branches — one engine per branch, all kept
+## Branches — one engine per branch
 
-| Branch | Engine | Status |
-| --- | --- | --- |
-| [`main`](https://github.com/kacperpaczos/n8niframe/tree/main) | **n8n** 2.38.7 | The original engine and baseline. Rollback reference for everything else. |
-| `faza-1-dagu` *(this branch)* | **Dagu** 2.16.6 (pinned by digest) | The most complete wrap: 18/18 regression scenarios passed against the n8n baseline, end-to-end bot demo (GLM), full knowledge register and acceptance docs. |
-| [`proba-bytechef`](https://github.com/kacperpaczos/n8niframe/tree/proba-bytechef) | **ByteChef** (upstream image) + Postgres 16 | Engine runs in the iframe with three demo workflows. Bot not yet adapted: it speaks Dagu's MCP; ByteChef ships a native Management MCP — adapter is pending. |
+| Branch | Engine | Role | Alignment with the n8n bar |
+| --- | --- | --- | --- |
+| [`n8n`](https://github.com/kacperpaczos/n8niframe/tree/n8n) | **n8n** 2.38.7 | The **reference implementation**. Every candidate is measured against this behavior. | 100% by definition — it *is* the bar. |
+| `dagu` *(this branch)* | **Dagu** 2.16.6 (pinned by digest) | Chat wrapper around Dagu: contract-enforcing policy layer, YAML DAGs the bot writes into `dags/`. | **High.** 18/18 regression scenarios, data parity on real fixtures, end-to-end bot demo (GLM). |
+| [`bytechef`](https://github.com/kacperpaczos/n8niframe/tree/bytechef) | **ByteChef** (upstream) + Postgres 16 | Chat wrapper around ByteChef. | **Partial.** Engine embedded with 3 demo workflows; bot adapter (their Management MCP) pending. |
+
+## Roadmap — one engine per branch
+
+A candidate earns a branch by reproducing the reference behavior (the 18 regression scenarios from
+the n8n baseline) **and** exposing an authoring surface our bot can drive (MCP or a machine API).
+Shortlist:
+
+| Planned branch | Engine | License | Why it is on the shortlist | Status |
+| --- | --- | --- | --- | --- |
+| `kestra` | Kestra 2.0.x | Apache-2.0 | Flows as YAML; since 2.0 any flow can register as an **MCP tool** — exactly the bot-first architecture we already run. First LTS release. Image already on the host (2.0.2), not yet integrated. | next up |
+| `node-red` | Node-RED | Apache-2.0 | The most mature flow editor; a whole flow deploys as JSON over the Admin HTTP API — arguably the easiest bot-authoring surface of all. Embeddable via `httpAdminRoot`/`httpNodeRoot`. | planned |
+| `windmill` | Windmill | AGPL-3.0 | Scripts-first (TypeScript/Python/Go), fast UI, everything-is-code — bot-friendly by construction; the license needs the same embedding review Dagu got. | planned |
+| `activepieces` | Activepieces CE | MIT | TypeScript, large piece library, AI-first roadmap. | shortlist |
+| `automatisch` | Automatisch | AGPL-3.0 | Zapier-like model, simple to reason about. | optional |
+| `temporal` | Temporal (or Netflix Conductor) | MIT / Apache-2.0 | Code-first orchestration — no visual canvas, which inverts the usual pitch: bot-first by design. | later |
+
+Out of scope: Airflow / Prefect / Dagster (batch-data paradigm, not an embedded app-workflow UI) and
+Zapier / Make / n8n Cloud (SaaS — the UI cannot be self-hosted into the iframe).
 
 ## Run this branch (Dagu)
 
@@ -49,17 +67,16 @@ and the iframe follows the run.
   — see `docs/odbior-faza-1.md`.
 * **Data parity** on real fixtures extracted from n8n executions: values, types, precision,
   ordering — `docs/rejestr-workflow.md` §8.
-* **All 15 n8n knowledge objects** (workflows, executions, account, keys, register of what is kept
-  vs. written off) — accounted, nothing disappeared silently.
+* **All 15 n8n knowledge objects** (workflows, executions, account, keys) — accounted, nothing
+  disappeared silently.
 
-Key docs: `docs/raport-finalny-faza-1.md` (final report), `docs/decyzja-architektoniczna.md`
-(architecture + trust boundary), `docs/wycofanie.md` (rollback to n8n, drilled on a copy),
-`docs/audyt-dagu-bezpieczenstwo.md` (security verdicts).
+Key docs: `docs/raport-finalny-faza-1.md`, `docs/decyzja-architektoniczna.md`,
+`docs/wycofanie.md` (rollback to n8n, drilled on a copy), `docs/audyt-dagu-bezpieczenstwo.md`.
 
 ## Repository layout
 
 ```
-docker-compose.yml      stack: dagu / frontend / chat-backend / poswiadczenia / proxy (+ n8n behind a profile)
+docker-compose.yml      dagu / frontend / chat-backend / poswiadczenia / proxy (+ n8n behind a profile)
 proxy/Caddyfile         routing, iframe headers, engine-token injection (variant B2)
 frontend/               React + TypeScript (Vite) — menu, iframe panel, chat panel
 chat-backend/           session gate, contract policy layer, Dagu MCP client, LLM CLI wiring
