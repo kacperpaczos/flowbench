@@ -381,6 +381,9 @@ services:
       - "8080"
     networks:
       - wewnetrzna
+      # Wyjscie na swiat: zadania workflow (httpRequest itp.) musza dosiegac
+      # publicznych API - ta sama racja, dla ktorej proxy siedzi w "wyjsciowa".
+      - wyjsciowa
 
   bytechef-postgres:
     image: postgres:16-alpine
